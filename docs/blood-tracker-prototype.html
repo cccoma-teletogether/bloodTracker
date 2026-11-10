@@ -1,0 +1,904 @@
+<title>혈액검사 기록</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2D55D6">
+<link rel="manifest" href="blood-tracker.webmanifest">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 레이아웃: 상단 요약 → 선택 항목 추이 그래프 → 그룹별 항목 카드 → 검사일별 비교표(검사 종류마다 없는 항목은 빈칸) */
+:root{
+  --bg:#F2F5F8; --surface:#FFFFFF; --surface-2:#E8EDF3; --line:#DCE2E9;
+  --ink:#111B26; --ink-2:#445166; --ink-3:#667386;
+  --accent:#2D55D6; --accent-soft:#E7EDFD; --on-accent:#FFFFFF;
+  --ok:#1B7F55; --ok-soft:#E1F2EA; --band:rgba(27,127,85,.11);
+  --high:#C0402A; --high-soft:#FBE7E2;
+  --low:#9A5B08; --low-soft:#FBEED6;
+  --f-body:'IBM Plex Sans KR',system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F151C; --surface:#17202A; --surface-2:#212C38; --line:#2A3745;
+  --ink:#E8EDF3; --ink-2:#AAB6C4; --ink-3:#8795A6;
+  --accent:#86A2FF; --accent-soft:#1E2B4F; --on-accent:#0F151C;
+  --ok:#4CC38A; --ok-soft:#153427; --band:rgba(76,195,138,.13);
+  --high:#FF8C72; --high-soft:#3B201B;
+  --low:#F0B35A; --low-soft:#392B10;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151C; --surface:#17202A; --surface-2:#212C38; --line:#2A3745;
+  --ink:#E8EDF3; --ink-2:#AAB6C4; --ink-3:#8795A6;
+  --accent:#86A2FF; --accent-soft:#1E2B4F; --on-accent:#0F151C;
+  --ok:#4CC38A; --ok-soft:#153427; --band:rgba(76,195,138,.13);
+  --high:#FF8C72; --high-soft:#3B201B;
+  --low:#F0B35A; --low-soft:#392B10;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55;
+  padding-block:24px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3,p{margin:0}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1120px;margin-inline:auto;display:flex;flex-direction:column;gap:24px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 헤더 */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 16px}
+.top h1{font-size:24px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top p{color:var(--ink-2);margin-top:4px}
+.profile-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.profile-tools label{font-size:12px;color:var(--ink-2)}
+.profile-tools select{min-width:150px}
+.badge{font:500 11px var(--f-mono);padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.07)}
+
+/* 요약 */
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sum{background:var(--surface);padding:14px 18px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.sum .k{font-size:12px;color:var(--ink-3)}
+.sum .v{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sum .s{font-size:13px;color:var(--ink-2)}
+
+/* 상태 표시 */
+.pill{display:inline-flex;align-items:center;gap:3px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.high{background:var(--high-soft);color:var(--high)}
+.pill.low{background:var(--low-soft);color:var(--low)}
+.pill.due{background:var(--accent-soft);color:var(--accent)}
+
+/* 추이 패널 */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+.d-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px 24px;margin-bottom:10px}
+.d-en{font:400 12px var(--f-mono);color:var(--ink-3)}
+.d-name{font-size:21px;font-weight:700;letter-spacing:-.01em}
+.d-now{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.d-val{font-size:34px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.d-unit{color:var(--ink-2)}
+.d-meta{display:flex;flex-wrap:wrap;gap:4px 18px;color:var(--ink-2);font-size:13px}
+#chart{width:100%;min-height:250px;margin-top:8px}
+#chart svg{display:block;max-width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:6px;font-size:12px;color:var(--ink-3)}
+.legend i{display:inline-block;vertical-align:middle;margin-right:6px}
+.sw-line{width:16px;height:0;border-top:2px solid var(--accent)}
+.sw-band{width:16px;height:10px;background:var(--band);border:1px solid var(--ok);border-radius:2px;opacity:.8}
+.sw-due{width:16px;height:0;border-top:1px dashed var(--accent)}
+
+.hint{color:var(--ink-3);font-size:13px}
+
+/* 필터 */
+.sec-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+.sec-head h2{font-size:16px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px;color:var(--ink-2)}
+.chip small{font:400 11px var(--f-mono);margin-left:4px;color:var(--ink-3)}
+.chip:hover{border-color:var(--ink-3)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.chip[aria-pressed="true"] small{color:var(--surface);opacity:.7}
+
+/* 항목 카드 */
+.groups{display:flex;flex-direction:column;gap:22px;margin-top:14px}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{font-size:13px;font-weight:600;color:var(--ink-2);display:flex;align-items:baseline;gap:8px}
+.grp h3 small{font:400 11px var(--f-mono);color:var(--ink-3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.card{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:5px;min-width:0}
+.card:hover{border-color:var(--ink-3)}
+.card[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.c-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.c-name{font-weight:600}
+.c-en{font:400 11px var(--f-mono);color:var(--ink-3);margin-top:-3px}
+.c-val{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-block:2px}
+.c-num{display:flex;align-items:baseline;gap:5px;font-variant-numeric:tabular-nums;min-width:0}
+.c-num b{font-size:24px;font-weight:600;line-height:1.1}
+.c-num span{font-size:12px;color:var(--ink-2)}
+.c-meta{font-size:12px;color:var(--ink-2)}
+.c-date{font:400 11px var(--f-mono);color:var(--ink-3)}
+.spark{flex:none}
+.spark polyline{fill:none;stroke:var(--accent);stroke-width:1.75;stroke-linejoin:round;stroke-linecap:round}
+
+/* 비교표 */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:12px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+thead th{vertical-align:bottom;padding-block:10px;min-width:92px;white-space:normal}
+thead th .dt{font:500 12px var(--f-mono);color:var(--ink);display:block;white-space:nowrap}
+thead th .lb{font-size:11px;font-weight:400;color:var(--ink-3);display:block;line-height:1.35;margin-top:2px}
+th.first,td.first{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:150px;border-right:1px solid var(--line)}
+td.first small{color:var(--ink-3);margin-left:4px;font-size:11px}
+tbody tr:last-child td{border-bottom:0}
+tr.grp-row th{text-align:left;background:var(--surface-2);font-size:12px;font-weight:600;color:var(--ink-2);padding-block:5px}
+tr.grp-row th span{position:sticky;left:12px}
+td.na{color:var(--ink-3);opacity:.55;text-align:center}
+td.high{background:var(--high-soft);color:var(--high);font-weight:600}
+td.low{background:var(--low-soft);color:var(--low);font-weight:600}
+.t-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12px;color:var(--ink-3)}
+.th-actions{display:flex;gap:4px;margin-top:4px;justify-content:flex-end}
+.th-actions .linkbtn{font-size:11px;padding:0 2px}
+
+/* 차트 SVG */
+.grid-h{stroke:var(--line);stroke-width:1}
+.grid-v{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+.grid-v.off{opacity:.45}
+.grid-due{stroke:var(--accent);stroke-width:1;stroke-dasharray:4 4;opacity:.7}
+.band{fill:var(--band)}
+.band-edge{stroke:var(--ok);stroke-width:1;stroke-dasharray:5 4;opacity:.6}
+.series{fill:none;stroke:var(--accent);stroke-width:2.25;stroke-linejoin:round;stroke-linecap:round}
+.dot{stroke:var(--surface);stroke-width:2}
+.pt-ok{fill:var(--ok)} .pt-high{fill:var(--high)} .pt-low{fill:var(--low)}
+.ax{font:11px var(--f-mono);fill:var(--ink-3)}
+.ax-date{font:11px var(--f-mono);fill:var(--ink-2)}
+.ax-date.off{fill:var(--ink-3);opacity:.6}
+.ax-sub{font:500 10px var(--f-body);fill:var(--ink-3)}
+.ax-sub.due{fill:var(--accent)}
+.val{font:600 12px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3.5px;stroke-linejoin:round;font-variant-numeric:tabular-nums}
+
+/* 입력 폼 */
+.f-row{display:flex;flex-wrap:wrap;gap:12px 16px;margin-bottom:14px}
+.f-row label,.f-item{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2);min-width:0}
+input[type=date],input[type=number],select{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 10px;font-size:16px;color:var(--ink);min-width:0;width:100%}
+.f-row label{flex:1 1 200px}
+fieldset{border:0;padding:0;margin:0 0 14px}
+legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
+.gchks{display:flex;flex-wrap:wrap;gap:6px}
+.gchk{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer}
+.gchk input{accent-color:var(--accent);margin:0}
+.f-grp{margin-bottom:12px}
+.f-grp h3{font-size:13px;font-weight:600;margin-bottom:6px}
+.f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.f-item em{font-style:normal;color:var(--ink-3);font-size:12px}
+.f-actions{display:flex;gap:8px;margin-top:6px}
+#form-panel h2{font-size:16px;font-weight:600;margin-bottom:12px}
+
+.foot{color:var(--ink-3);font-size:12px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;justify-content:space-between}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink-2);text-decoration:underline;cursor:pointer;font-size:12px}
+#toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:calc(100% - 32px)}
+#toast.show{opacity:1}
+#install-app[hidden]{display:none}
+.view-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0;color:var(--ink-2);font-size:13px}
+.view-tools select{width:auto;min-width:110px}
+.compare-box{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.compare-box label{display:inline-flex;align-items:center;gap:5px;margin:4px 12px 4px 0}
+.compare-chart{width:100%;overflow-x:auto}
+.attachment-list{font-size:12px;color:var(--ink-2);margin-top:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:520px){
+  .panel{padding:16px}
+  .d-val{font-size:30px}
+  .top h1{font-size:22px}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>혈액검사 기록 <span class="badge">샘플 데이터</span></h1>
+      <p>3개월 단위 검사 수치를 종류별로 나눠 추이와 함께 봅니다.</p>
+      <div class="profile-tools" aria-label="프로필 선택">
+        <label for="profile-select">현재 보는 사람</label>
+        <select id="profile-select"></select>
+        <button class="btn" id="btn-profile-add" type="button">+ 가족 추가</button>
+        <button class="btn" id="btn-profile-rename" type="button">이름 변경</button>
+        <button class="btn" id="btn-profile-delete" type="button">현재 가족 삭제</button>
+        <button class="btn" id="btn-profile-clear" type="button">내 데이터 초기화</button>
+      </div>
+    </div>
+    <button class="btn primary" id="btn-add" type="button" aria-expanded="false" aria-controls="form-panel">+ 검사 결과 추가</button>
+  </header>
+
+  <section class="panel" id="form-panel" hidden>
+    <h2>검사 결과 추가</h2>
+    <input id="f-test-id" type="hidden">
+    <form id="add-form" autocomplete="off">
+      <div class="f-row">
+        <label for="f-date">검진일(실제)<input id="f-date" type="date" required></label>
+        <label for="f-lab">검사기관
+          <select id="f-lab"></select>
+        </label>
+        <label for="f-next-appointment">다음 실제 예약일 <span class="hint">선택</span><input id="f-next-appointment" type="date"></label>
+        <label for="f-interval">다음 검사 기본 간격
+          <select id="f-interval">
+            <option value="3">3개월</option>
+            <option value="6">6개월</option>
+            <option value="12">1년</option>
+            <option value="24">2년</option>
+          </select>
+        </label>
+        <label for="f-note">검사 목적 메모 <span class="hint">선택</span><input id="f-note" type="text" maxlength="160" placeholder="예: 갑상선 추적검사"></label>
+        <label for="f-attachment">검사 결과지 사진/PDF <span class="hint">선택</span><input id="f-attachment" type="file" accept="image/*,.pdf"></label>
+        <label for="f-preset">검사 종류
+          <select id="f-preset">
+            <option value="base">기본 (혈당·지질·간기능·신장)</option>
+            <option value="thy">기본 + 갑상선</option>
+            <option value="cbc">기본 + 혈구</option>
+            <option value="thyvit">기본 + 갑상선 + 비타민·염증</option>
+            <option value="all">종합 (전체)</option>
+            <option value="custom">직접 선택</option>
+          </select>
+        </label>
+      </div>
+      <div class="attachment-list" id="f-attachment-list"></div>
+      <fieldset><legend>이번 검사에 포함된 항목 그룹</legend><div class="gchks" id="f-groups"></div></fieldset>
+      <div id="f-items"></div>
+      <div class="f-actions">
+        <button class="btn primary" type="submit">저장</button>
+        <button class="btn" type="button" id="f-cancel">취소</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" id="range-panel" hidden>
+    <div class="sec-head"><h2>검사기관 및 참고 범위 관리</h2><div class="chips"><button class="btn" id="btn-lab-add" type="button">+ 기관 등록</button><button class="btn" id="btn-lab-delete" type="button">기관 삭제</button><button class="btn" id="range-cancel" type="button">닫기</button></div></div>
+    <p class="hint" style="margin:6px 0 12px">검사결과지에 표시된 참고 범위를 입력하세요. 비워 두면 기본 범위를 사용합니다.</p>
+    <label class="f-item" style="max-width:320px">검사기관<select id="range-lab"></select></label>
+    <div id="range-items" style="margin-top:14px"></div>
+    <div class="f-actions"><button class="btn primary" id="range-save" type="button">참고 범위 저장</button></div>
+  </section>
+
+  <section class="summary" id="summary" aria-label="요약"></section>
+
+  <section class="panel" aria-label="선택 항목 추이">
+    <div id="detail-top"></div>
+    <div class="view-tools">
+      <label for="period-filter">기간 <select id="period-filter"><option value="all">전체 기간</option><option value="12">최근 1년</option><option value="24">최근 2년</option><option value="36">최근 3년</option></select></label>
+      <button class="btn" id="btn-compare" type="button">여러 항목 비교</button>
+      <button class="btn" id="install-app" type="button" hidden>홈 화면에 설치</button>
+    </div>
+    <div id="chart"></div>
+    <div class="legend" id="legend"></div>
+    <div class="compare-box" id="compare-box" hidden></div>
+  </section>
+
+  <section aria-label="항목별 현황">
+    <div class="sec-head">
+      <h2>항목별 현황</h2>
+      <div class="chips" id="chips" role="group" aria-label="항목 그룹 필터"></div>
+    </div>
+    <p class="hint" style="margin-top:6px">카드를 누르면 위 그래프가 바뀝니다.</p>
+    <div class="groups" id="cards"></div>
+  </section>
+
+  <section aria-label="검사일별 비교표">
+    <div class="sec-head"><h2>검사일별 비교표</h2><label class="hint" for="lab-filter">검사기관 <select id="lab-filter"></select></label></div>
+    <div class="tablewrap" id="matrix-wrap"><table id="matrix"></table></div>
+    <div class="t-legend">
+      <span>높음 ▲ / 낮음 ▼ 는 참고 범위를 벗어난 값</span>
+      <span>— 는 그 검사에 포함되지 않은 항목</span>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>참고 범위는 예시 값입니다. 검사기관과 성별에 따라 다르므로 결과지의 범위를 기준으로 하세요.</span>
+    <button class="linkbtn" id="btn-ranges" type="button">검사기관 및 참고 범위 관리</button>
+    <button class="linkbtn" id="btn-export" type="button">데이터 백업 저장</button>
+    <button class="linkbtn" id="btn-csv" type="button">CSV 내보내기</button>
+    <button class="linkbtn" id="btn-import" type="button">데이터 복원</button>
+    <input id="file-import" type="file" accept="application/json,.json" hidden>
+    <button class="linkbtn" id="btn-reset" type="button">샘플 데이터로 되돌리기</button>
+  </footer>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  const GROUPS=[
+    {id:'glu',name:'혈당'},{id:'lip',name:'지질'},{id:'liv',name:'간기능'},{id:'kid',name:'신장·요산'},
+    {id:'cbc',name:'혈구'},{id:'thy',name:'갑상선'},{id:'vit',name:'비타민·염증'}
+  ];
+  const BASE=['glu','lip','liv','kid'];
+  const ITEMS=[
+    {id:'fbs',g:'glu',name:'공복혈당',en:'Fasting Glucose',unit:'mg/dL',lo:70,hi:99,dec:0},
+    {id:'a1c',g:'glu',name:'당화혈색소',en:'HbA1c',unit:'%',lo:4.0,hi:5.6,dec:1},
+    {id:'tc',g:'lip',name:'총콜레스테롤',en:'Total Cholesterol',unit:'mg/dL',lo:null,hi:199,dec:0,ref:'200 미만'},
+    {id:'ldl',g:'lip',name:'LDL 콜레스테롤',en:'LDL-C',unit:'mg/dL',lo:null,hi:129,dec:0,ref:'130 미만'},
+    {id:'hdl',g:'lip',name:'HDL 콜레스테롤',en:'HDL-C',unit:'mg/dL',lo:40,hi:null,dec:0,ref:'40 이상'},
+    {id:'tg',g:'lip',name:'중성지방',en:'Triglyceride',unit:'mg/dL',lo:null,hi:149,dec:0,ref:'150 미만'},
+    {id:'ast',g:'liv',name:'AST (GOT)',en:'AST',unit:'U/L',lo:null,hi:40,dec:0,ref:'40 이하'},
+    {id:'alt',g:'liv',name:'ALT (GPT)',en:'ALT',unit:'U/L',lo:null,hi:41,dec:0,ref:'41 이하'},
+    {id:'ggt',g:'liv',name:'γ-GTP',en:'GGT',unit:'U/L',lo:null,hi:60,dec:0,ref:'60 이하'},
+    {id:'cr',g:'kid',name:'크레아티닌',en:'Creatinine',unit:'mg/dL',lo:0.7,hi:1.3,dec:2},
+    {id:'egfr',g:'kid',name:'eGFR',en:'eGFR',unit:'mL/min',lo:90,hi:null,dec:0,ref:'90 이상'},
+    {id:'ua',g:'kid',name:'요산',en:'Uric Acid',unit:'mg/dL',lo:3.5,hi:7.2,dec:1},
+    {id:'hb',g:'cbc',name:'헤모글로빈',en:'Hemoglobin',unit:'g/dL',lo:13.0,hi:17.0,dec:1},
+    {id:'wbc',g:'cbc',name:'백혈구',en:'WBC',unit:'10³/µL',lo:4.0,hi:10.0,dec:1},
+    {id:'plt',g:'cbc',name:'혈소판',en:'Platelet',unit:'10³/µL',lo:150,hi:400,dec:0},
+    {id:'tsh',g:'thy',name:'TSH',en:'TSH',unit:'mIU/L',lo:0.4,hi:4.0,dec:1},
+    {id:'ft4',g:'thy',name:'Free T4',en:'Free T4',unit:'ng/dL',lo:0.8,hi:1.8,dec:1},
+    {id:'vitd',g:'vit',name:'비타민 D',en:'25-OH Vitamin D',unit:'ng/mL',lo:30,hi:100,dec:0},
+    {id:'fer',g:'vit',name:'페리틴',en:'Ferritin',unit:'ng/mL',lo:30,hi:400,dec:0},
+    {id:'crp',g:'vit',name:'hs-CRP',en:'hs-CRP',unit:'mg/L',lo:null,hi:3.0,dec:1,ref:'3.0 이하'}
+  ];
+  /* 샘플: 7회 검사. 검사마다 포함 그룹이 다름 (없으면 null) */
+  const DATES=['2025-02-12','2025-05-14','2025-08-13','2025-11-12','2026-02-11','2026-05-13','2026-08-12'];
+  const ALL=GROUPS.map(g=>g.id);
+  const TEST_GROUPS=[ALL,BASE,[...BASE,'thy'],ALL,[...BASE,'cbc'],[...BASE,'thy','vit'],ALL];
+  const SAMPLE_LABS=['메인통원병원','국민건강검진','헌혈(혈액원)'];
+  const SAMPLE_INTERVALS=[3,24,6,3,24,6,3];
+  const SERIES={
+    fbs:[104,101,98,99,96,94,92], a1c:[5.8,5.7,5.6,5.6,5.5,5.4,5.4],
+    tc:[218,209,201,196,192,188,185], ldl:[142,134,128,122,118,112,108],
+    hdl:[46,47,49,50,52,53,55], tg:[178,165,152,140,131,122,118],
+    ast:[28,26,27,25,24,26,23], alt:[41,38,35,33,30,28,27], ggt:[52,48,45,41,38,36,34],
+    cr:[0.92,0.94,0.91,0.95,0.93,0.96,0.94], egfr:[98,97,99,96,97,95,96], ua:[7.4,7.1,6.9,6.6,6.5,6.3,6.2],
+    hb:[14.8,null,null,15.0,14.9,null,15.1], wbc:[6.2,null,null,5.8,6.5,null,5.9], plt:[245,null,null,238,252,null,241],
+    tsh:[2.8,null,3.1,2.6,null,2.9,3.4], ft4:[1.2,null,1.1,1.3,null,1.2,1.1],
+    vitd:[18,null,null,22,null,25,27], fer:[52,null,null,41,null,33,28], crp:[0.8,null,null,0.6,null,0.5,0.4]
+  };
+  function sampleTests(){
+    return DATES.map((d,i)=>{
+      const v={}; for(const id in SERIES){ const x=SERIES[id][i]; if(x!=null) v[id]=x; }
+      return {date:d,lab:SAMPLE_LABS[i%SAMPLE_LABS.length],intervalMonths:SAMPLE_INTERVALS[i],groups:TEST_GROUPS[i].slice(),v};
+    });
+  }
+
+  const KEY='blood-tracker-profiles-v1';
+  const LEGACY_KEY='blood-tracker-sample-v1';
+  const newProfile=(name,withSample=false)=>({id:`p-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,name,tests:withSample?sampleTests():[]});
+  function load(){
+    try{
+      const r=localStorage.getItem(KEY);
+      if(r){ const p=JSON.parse(r); if(p&&Array.isArray(p.profiles)&&p.profiles.length) return p; }
+      const legacy=localStorage.getItem(LEGACY_KEY);
+      if(legacy){ const old=JSON.parse(legacy); if(Array.isArray(old)&&old.length) return {schemaVersion:2,profiles:[newProfile('나',false)],selectedProfileId:null,labs:SAMPLE_LABS.slice(),legacyTests:old}; }
+    }catch(e){}
+    return {schemaVersion:2,profiles:[newProfile('나',true)],selectedProfileId:null,labs:SAMPLE_LABS.slice()};
+  }
+  const store=load();
+  if(store.legacyTests){ store.profiles[0].tests=store.legacyTests; delete store.legacyTests; }
+  store.schemaVersion=2;
+  store.labs=[...new Set([...(store.labs||[]),...store.profiles.flatMap(p=>(p.tests||[]).map(t=>t.lab)).filter(Boolean)])];
+  store.referenceRanges=store.referenceRanges||{};
+  store.selectedProfileId=store.selectedProfileId||store.selectedId||store.profiles[0].id;
+  delete store.selectedId;
+  let profileId=store.selectedProfileId;
+  let tests=(store.profiles.find(p=>p.id===profileId)||store.profiles[0]).tests;
+  store.profiles.forEach(p=>{(p.tests||[]).forEach(t=>{if(!t.id)t.id=`t-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;});});
+  const attachmentDB=(()=>{try{if(!('indexedDB' in window))return null;return new Promise((resolve,reject)=>{const req=indexedDB.open('blood-tracker-files',1);req.onupgradeneeded=()=>req.result.createObjectStore('files');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}catch(e){return null;}})();
+  async function putAttachment(file){if(!attachmentDB)throw new Error('IndexedDB unavailable');const db=await attachmentDB,id=`a-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(file,id);tx.oncomplete=()=>resolve(id);tx.onerror=()=>reject(tx.error);});}
+  async function getAttachment(id){if(!attachmentDB)throw new Error('IndexedDB unavailable');const db=await attachmentDB;return new Promise((resolve,reject)=>{const r=db.transaction('files','readonly').objectStore('files').get(id);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+  async function deleteAttachment(id){if(!attachmentDB||!id)return;const db=await attachmentDB;db.transaction('files','readwrite').objectStore('files').delete(id);}
+  async function openAttachment(a){try{if(a?.data){window.open(a.data,'_blank','noopener');return;}const file=await getAttachment(a.id);if(file)window.open(URL.createObjectURL(file),'_blank','noopener');else toast('첨부 파일을 찾을 수 없습니다');}catch(e){toast('첨부 파일을 열 수 없습니다');}}
+  function save(){ try{ store.selectedProfileId=profileId; store.profiles.forEach(p=>{if(p.id===profileId)p.tests=tests;}); localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} }
+  tests.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const $=s=>document.querySelector(s);
+  const pad=n=>String(n).padStart(2,'0');
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const dotted=d=>d.replace(/-/g,'.');
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const normalizeLab=s=>String(s||'').toLowerCase().replace(/[\s().,·\-_/]/g,'');
+  function labDistance(a,b){
+    const x=normalizeLab(a), y=normalizeLab(b), row=Array.from({length:y.length+1},(_,i)=>i);
+    for(let i=1;i<=x.length;i++){
+      let prev=row[0]; row[0]=i;
+      for(let j=1;j<=y.length;j++){ const cur=row[j]; row[j]=Math.min(row[j]+1,row[j-1]+1,prev+(x[i-1]===y[j-1]?0:1)); prev=cur; }
+    }
+    return row[y.length];
+  }
+  function similarLabs(name){
+    const historical=[...new Set(store.profiles.flatMap(p=>(p.tests||[]).map(t=>t.lab).filter(Boolean)))].filter(l=>!store.labs.includes(l));
+    const n=normalizeLab(name);
+    return historical.filter(l=>{const m=normalizeLab(l); return n.includes(m)||m.includes(n)||labDistance(name,l)<=Math.max(2,Math.floor(Math.min(n.length,m.length)/5));}).slice(0,3);
+  }
+  const short=d=>d.slice(2,7).replace('-','.');
+  const wd=d=>{const [y,m,dd]=d.split('-').map(Number);return new Date(y,m-1,dd).toLocaleDateString('ko-KR',{weekday:'short'});};
+  function addMonths(ds,n){const [y,m,d]=ds.split('-').map(Number);const dt=new Date(y,m-1+n,d);return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;}
+  const fmt=(it,v)=>Number(v).toFixed(it.dec||0);
+  const ST={ok:'정상',high:'높음 ▲',low:'낮음 ▼'};
+  const status=(it,v)=>(it.lo!=null&&v<it.lo)?'low':(it.hi!=null&&v>it.hi)?'high':'ok';
+  const rangeFor=(it,lab)=>{
+    const custom=lab&&store.referenceRanges[lab]&&store.referenceRanges[lab][it.id];
+    return custom?Object.assign({},it,custom):it;
+  };
+  const markerStatus=(it,v,lab)=>{const r=rangeFor(it,lab);return status(r,v);};
+  const refTextFor=(it,lab)=>{const r=rangeFor(it,lab);return r.ref||(r.lo==null?`${fmt(r,r.hi)} 이하`:r.hi==null?`${fmt(r,r.lo)} 이상`:`${fmt(r,r.lo)}–${fmt(r,r.hi)}`);};
+  let labFilter='all';
+  let periodFilter='all';
+  const viewTests=()=>{
+    let out=labFilter==='all'?tests:tests.filter(t=>(t.lab||'미지정')===labFilter);
+    if(periodFilter!=='all'&&out.length){ const cutoff=addMonths(out[out.length-1].date,-Number(periodFilter)); out=out.filter(t=>t.date>=cutoff); }
+    return out;
+  };
+  const refText=it=>it.ref||(it.lo==null?`${fmt(it,it.hi)} 이하`:it.hi==null?`${fmt(it,it.lo)} 이상`:`${fmt(it,it.lo)}–${fmt(it,it.hi)}`);
+  const gname=id=>GROUPS.find(g=>g.id===id).name;
+  const series=it=>viewTests().filter(t=>t.v[it.id]!=null).map(t=>({date:t.date,v:t.v[it.id],lab:t.lab,note:t.note}));
+  function info(it){
+    const s=series(it); if(!s.length) return null;
+    const last=s[s.length-1], prev=s[s.length-2];
+    return {s,last,prev,st:markerStatus(it,last.v,last.lab)};
+  }
+  function testLabel(t){
+    const g=new Set(t.groups);
+    if(ALL.every(x=>g.has(x))) return '종합';
+    if(BASE.every(x=>g.has(x))){
+      const ex=GROUPS.filter(x=>!BASE.includes(x.id)&&g.has(x.id)).map(x=>x.name);
+      return ex.length?'기본 + '+ex.join('·'):'기본';
+    }
+    return GROUPS.filter(x=>g.has(x.id)).map(x=>x.name).join('·');
+  }
+  function delta(it,inf){
+    if(!inf||!inf.prev) return '';
+    const d=inf.last.v-inf.prev.v;
+    if(Math.abs(d)<Math.pow(10,-(it.dec||0))/2) return '직전 측정과 같음';
+    return `직전 측정 대비 ${d>0?'▲':'▼'} ${Math.abs(d).toFixed(it.dec||0)}`;
+  }
+
+  const state={group:'all',sel:null,compare:[],compareOpen:false};
+  function pickDefault(){
+    const flagged=ITEMS.find(it=>{const i=info(it);return i&&i.st!=='ok';});
+    state.sel=(flagged||ITEMS[0]).id;
+  }
+  pickDefault();
+
+  /* 요약 */
+  function renderSummary(){
+    const shown=viewTests();
+    const last=shown[shown.length-1];
+    if(!last){ $('#summary').innerHTML='<div class="sum"><span class="k">현재 검사기관 필터</span><span class="v">검사 기록 없음</span><span class="s">전체 기관으로 바꾸거나 다른 기관을 선택하세요</span></div>'; return; }
+    const interval=Number(last.intervalMonths)||3;
+    const due=addMonths(last.date,interval);
+    const appointment=last.nextAppointmentDate||'';
+    const target=appointment||due;
+    const [y,m,d]=target.split('-').map(Number);
+    const t=new Date(y,m-1,d); const t0=new Date(); t0.setHours(0,0,0,0);
+    const diff=Math.round((t-t0)/864e5);
+    const dd=diff>0?`D-${diff}`:diff===0?'오늘':`${-diff}일 지남`;
+    const out=ITEMS.map(it=>({it,i:info(it)})).filter(x=>x.i&&x.i.st!=='ok');
+    $('#summary').innerHTML=
+      `<div class="sum"><span class="k">최근 검사</span><span class="v">${dotted(last.date)} (${wd(last.date)})</span><span class="s">${testLabel(last)} · ${last.lab?esc(last.lab)+' · ':''}${Object.keys(last.v).length}개 항목 · 누적 ${shown.length}회</span></div>`+
+      `<div class="sum"><span class="k">다음 검진 일정</span><span class="v">${appointment?dotted(appointment)+' ('+wd(appointment)+')':'일정 미확정'} ${appointment?'<span class="pill due">'+dd+'</span>':''}</span><span class="s">예상 시점 ${dotted(due)} · 기본 간격 ${interval}개월 기준</span></div>`+
+      `<div class="sum"><span class="k">참고 범위 밖 (항목별 최근 값 기준)</span><span class="v">${out.length}개 항목</span><span class="s">${out.length?out.map(x=>x.it.name+' '+(x.i.st==='high'?'높음':'낮음')).join(' · '):'모든 항목이 범위 안입니다'}</span></div>`;
+  }
+
+  /* 선택 항목 */
+  function renderDetail(){
+    const it=ITEMS.find(x=>x.id===state.sel); const inf=info(it);
+    let h=`<div class="d-head"><div><div class="d-en">${it.en} · ${gname(it.g)}</div><h2 class="d-name">${it.name}</h2></div>`;
+    if(inf) h+=`<div class="d-now"><span class="d-val">${fmt(it,inf.last.v)}</span><span class="d-unit">${it.unit}</span><span class="pill ${inf.st}">${ST[inf.st]}</span></div>`;
+    h+='</div>';
+    if(inf) h+=`<div class="d-meta"><span>참고 범위 ${refTextFor(it,inf.last.lab)} ${it.unit}</span><span>최근 측정 ${dotted(inf.last.date)}${inf.last.lab?' · '+esc(inf.last.lab):''}</span><span>측정 ${inf.s.length}회 / 전체 검사 ${viewTests().length}회</span>${inf.last.note?`<span>메모: ${esc(inf.last.note)}</span>`:''}${inf.last.attachment?`<span><button type="button" class="linkbtn" data-detail-attachment="${inf.last.date}">검사 결과지 보기</button></span>`:''}${inf.prev?`<span>${delta(it,inf)}</span>`:''}</div>`;
+    $('#detail-top').innerHTML=h;
+    const unmeasured=inf&&inf.s.length<viewTests().length;
+    $('#legend').innerHTML=
+      `<span><i class="sw-line"></i>측정값</span><span><i class="sw-band"></i>참고 범위</span><span><i class="sw-due"></i>다음 검사 예정</span>`+
+      (unmeasured?'<span>흐린 날짜 = 그 검사에서 이 항목은 측정하지 않음</span>':'');
+    drawChart(it);
+    renderCompare();
+  }
+
+  function renderCompare(){
+    const box=$('#compare-box');
+    if(!state.compareOpen){box.hidden=true;return;}
+    box.hidden=false;
+    const opts=ITEMS.map(x=>`<label><input type="checkbox" data-compare="${x.id}" ${state.compare.includes(x.id)?'checked':''}> ${x.name}</label>`).join('');
+    const selected=ITEMS.filter(x=>state.compare.includes(x.id));
+    const W=Math.max(280,Math.floor(box.clientWidth)||600), H=210, m={l:34,r:12,t:18,b:34};
+    const shown=viewTests(), dates=shown.map(t=>t.date), T=d=>new Date(d+'T00:00:00').getTime(), t0=T(dates[0]||todayStr), t1=T(dates[dates.length-1]||todayStr)||t0+1;
+    const X=d=>m.l+(T(d)-t0)/(t1-t0||1)*(W-m.l-m.r); let svg='';
+    selected.forEach((it,idx)=>{const s=series(it);if(!s.length)return;const vals=s.map(p=>p.v),lo=Math.min(...vals),hi=Math.max(...vals)||lo+1;const Y=v=>m.t+(hi-v)/(hi-lo||1)*(H-m.t-m.b);svg+=`<polyline fill="none" stroke="hsl(${idx*67%360} 70% 45%)" stroke-width="2" points="${s.map(p=>`${X(p.date).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}"/><text x="${m.l+idx*95}" y="12" fill="hsl(${idx*67%360} 70% 45%)" font-size="11">${esc(it.name)}</text>`;});
+    box.innerHTML=`<strong>항목 선택 (실제 수치가 아닌 항목별 변화 방향 비교)</strong><p class="hint">각 항목의 최저값~최고값을 0~100%로 맞춰 표시합니다. 서로 다른 단위의 수치를 직접 비교하는 그래프가 아닙니다.</p><div>${opts}</div>${selected.length?`<div class="compare-chart"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="여러 혈액검사 항목 비교 그래프">${svg}</svg></div>`:'<p class="hint">비교할 항목을 하나 이상 선택하세요.</p>'}`;
+  }
+
+  function niceTicks(lo,hi){
+    const raw=(hi-lo)/4; const p=Math.pow(10,Math.floor(Math.log10(raw))); const f=raw/p;
+    const step=(f<1.5?1:f<3?2:f<7?5:10)*p;
+    const out=[]; const start=Math.ceil(lo/step-1e-9);
+    for(let k=start;k*step<=hi+1e-9;k++) out.push(+(k*step).toFixed(10));
+    return {ticks:out,step};
+  }
+
+  function drawChart(it){
+    const box=$('#chart');
+    const s=series(it);
+    if(!s.length){box.innerHTML='<p class="hint">측정 기록이 없습니다.</p>';return;}
+    const W=Math.max(260,Math.floor(box.clientWidth)||600);
+    const H=W<480?250:290;
+    const m={l:W<480?38:46,r:16,t:26,b:46};
+    const pw=W-m.l-m.r, ph=H-m.t-m.b, ip=14;
+    const shown=viewTests();
+    const dates=shown.map(t=>t.date);
+    const due=addMonths(dates[dates.length-1],Number(shown[shown.length-1].intervalMonths)||3);
+    const T=d=>new Date(d+'T00:00:00').getTime();
+    const t0=T(dates[0]), t1=T(due);
+    const X=d=>m.l+ip+(T(d)-t0)/(t1-t0)*(pw-2*ip);
+    let lo=Math.min(...s.map(p=>p.v)), hi=Math.max(...s.map(p=>p.v));
+    const chartRef=rangeFor(it,s[s.length-1].lab);
+    if(chartRef.lo!=null) lo=Math.min(lo,chartRef.lo);
+    if(chartRef.hi!=null) hi=Math.max(hi,chartRef.hi);
+    const span=(hi-lo)||Math.abs(hi)*.2||1;
+    lo-=span*.12; hi+=span*.18;
+    const Y=v=>m.t+ph-(v-lo)/(hi-lo)*ph;
+    const {ticks,step}=niceTicks(lo,hi);
+    const td=step<1?Math.min(2,Math.ceil(-Math.log10(step)-1e-9)):0;
+    const measured=new Set(s.map(p=>p.date));
+    let g='';
+    ticks.forEach(v=>{
+      g+=`<line class="grid-h" x1="${m.l}" x2="${m.l+pw}" y1="${Y(v)}" y2="${Y(v)}"/>`;
+      g+=`<text class="ax" x="${m.l-8}" y="${Y(v)+4}" text-anchor="end">${v.toFixed(td)}</text>`;
+    });
+    const yTop=chartRef.hi!=null?Y(chartRef.hi):m.t, yBot=chartRef.lo!=null?Y(chartRef.lo):m.t+ph;
+    g+=`<rect class="band" x="${m.l}" y="${yTop}" width="${pw}" height="${Math.max(0,yBot-yTop)}"/>`;
+    if(chartRef.hi!=null) g+=`<line class="band-edge" x1="${m.l}" x2="${m.l+pw}" y1="${Y(chartRef.hi)}" y2="${Y(chartRef.hi)}"/>`;
+    if(chartRef.lo!=null) g+=`<line class="band-edge" x1="${m.l}" x2="${m.l+pw}" y1="${Y(chartRef.lo)}" y2="${Y(chartRef.lo)}"/>`;
+    dates.forEach(d=>{
+      const on=measured.has(d), x=X(d);
+      g+=`<line class="grid-v${on?'':' off'}" x1="${x}" x2="${x}" y1="${m.t}" y2="${m.t+ph}"/>`;
+      g+=`<text class="ax-date${on?'':' off'}" x="${x}" y="${H-24}" text-anchor="middle">${short(d)}</text>`;
+      if(!on) g+=`<text class="ax-sub" x="${x}" y="${H-10}" text-anchor="middle">미측정</text>`;
+    });
+    const dx=X(due);
+    g+=`<line class="grid-due" x1="${dx}" x2="${dx}" y1="${m.t}" y2="${m.t+ph}"/>`;
+    g+=`<text class="ax-date" x="${dx}" y="${H-24}" text-anchor="middle">${short(due)}</text><text class="ax-sub due" x="${dx}" y="${H-10}" text-anchor="middle">예정</text>`;
+    g+=`<polyline class="series" points="${s.map(p=>X(p.date).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ')}"/>`;
+    s.forEach((p,i)=>{
+      const x=X(p.date), y=Y(p.v), st=markerStatus(it,p.v,p.lab), isLast=i===s.length-1;
+      g+=`<circle class="dot pt-${st}" cx="${x}" cy="${y}" r="${isLast?6.5:4.5}"><title>${dotted(p.date)} · ${fmt(it,p.v)} ${it.unit} · ${ST[st]}</title></circle>`;
+      const ly=y-11<12?y+21:y-11;
+      g+=`<text class="val" x="${x}" y="${ly}" text-anchor="middle">${fmt(it,p.v)}</text>`;
+    });
+    box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${it.name} 추이 그래프. 최근 값 ${fmt(it,s[s.length-1].v)} ${it.unit}">${g}</svg>`;
+  }
+
+  /* 필터 / 카드 */
+  function renderChips(){
+    const cnt=id=>id==='all'?ITEMS.length:ITEMS.filter(i=>i.g===id).length;
+    $('#chips').innerHTML=[{id:'all',name:'전체'},...GROUPS].map(g=>
+      `<button type="button" class="chip" data-g="${g.id}" aria-pressed="${state.group===g.id}">${g.name}<small>${cnt(g.id)}</small></button>`).join('');
+  }
+  function renderLabFilter(){
+    const labs=[...new Set(tests.map(t=>t.lab||'미지정'))];
+    $('#lab-filter').innerHTML='<option value="all">전체 기관</option>'+labs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
+    $('#lab-filter').value=labFilter;
+    const selected=$('#f-lab').value;
+    $('#f-lab').innerHTML='<option value="">기관 선택</option>'+store.labs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
+    if(store.labs.includes(selected)) $('#f-lab').value=selected;
+  }
+  function renderRangeEditor(){
+    const lab=$('#range-lab').value||store.labs[0]||'';
+    $('#range-lab').innerHTML=store.labs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
+    $('#range-lab').value=lab;
+    const custom=store.referenceRanges[lab]||{};
+    $('#range-items').innerHTML=GROUPS.map(g=>`<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
+      ITEMS.filter(it=>it.g===g.id).map(it=>{
+        const r=custom[it.id]||{};
+        return `<label class="f-item"><span>${it.name} <em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
+      }).join('')+'</div></div>').join('');
+  }
+  function spark(it,s){
+    const w=84,h=30,p=3;
+    const last=s[s.length-1], st=markerStatus(it,last.v,last.lab);
+    if(s.length<2) return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><circle class="pt-${st}" cx="${w-p-2}" cy="${h/2}" r="3.5"/></svg>`;
+    const vs=s.map(q=>q.v); let lo=Math.min(...vs), hi=Math.max(...vs);
+    if(hi===lo){hi+=1;lo-=1;}
+    const X=i=>p+i*(w-2*p)/(s.length-1), Y=v=>h-p-(v-lo)/(hi-lo)*(h-2*p);
+    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${s.map((q,i)=>X(i).toFixed(1)+','+Y(q.v).toFixed(1)).join(' ')}"/><circle class="pt-${st}" cx="${X(s.length-1)}" cy="${Y(last.v)}" r="3.5"/></svg>`;
+  }
+  function renderCards(){
+    const gs=GROUPS.filter(g=>state.group==='all'||g.id===state.group);
+    $('#cards').innerHTML=gs.map(g=>{
+      const list=ITEMS.filter(i=>i.g===g.id);
+      return `<div class="grp"><h3>${g.name}<small>${list.length}개 항목</small></h3><div class="grid">`+
+        list.map(it=>{
+          const inf=info(it);
+          if(!inf) return `<button type="button" class="card" data-id="${it.id}" aria-pressed="${state.sel===it.id}"><div class="c-top"><span class="c-name">${it.name}</span></div><div class="c-meta">기록 없음</div></button>`;
+          return `<button type="button" class="card" data-id="${it.id}" aria-pressed="${state.sel===it.id}">`+
+            `<div class="c-top"><span class="c-name">${it.name}</span><span class="pill ${inf.st}">${ST[inf.st]}</span></div>`+
+            `<div class="c-en">${it.en}</div>`+
+            `<div class="c-val"><div class="c-num"><b>${fmt(it,inf.last.v)}</b><span>${it.unit}</span></div>${spark(it,inf.s)}</div>`+
+            `<div class="c-meta">참고 ${refTextFor(it,inf.last.lab)}${inf.prev?' · '+delta(it,inf).replace('직전 측정 대비 ','직전 '):''}</div>`+
+            `<div class="c-date">측정 ${dotted(inf.last.date)}</div></button>`;
+        }).join('')+`</div></div>`;
+    }).join('');
+  }
+
+  /* 비교표 */
+  function renderMatrix(){
+    const gs=GROUPS.filter(g=>state.group==='all'||g.id===state.group);
+    const shown=viewTests();
+    let h='<thead><tr><th class="first">항목</th>'+shown.map(t=>`<th><span class="dt">${t.date.slice(2).replace(/-/g,'.')}</span><span class="lb">${testLabel(t)}${t.lab?'<br>'+esc(t.lab):''}</span><span class="th-actions"><button type="button" class="linkbtn" data-edit-test="${t.id}">수정</button><button type="button" class="linkbtn" data-delete-test="${t.id}">삭제</button></span></th>`).join('')+'</tr></thead><tbody>';
+    gs.forEach(g=>{
+      h+=`<tr class="grp-row"><th colspan="${shown.length+1}"><span>${g.name}</span></th></tr>`;
+      ITEMS.filter(i=>i.g===g.id).forEach(it=>{
+        h+=`<tr><td class="first">${it.name}<small>${it.unit}</small></td>`;
+        shown.forEach(t=>{
+          const v=t.v[it.id];
+          if(v==null){h+='<td class="na">—</td>';return;}
+          const st=markerStatus(it,v,t.lab);
+          h+=`<td class="${st}">${fmt(it,v)}${st==='high'?' ▲':st==='low'?' ▼':''}</td>`;
+        });
+        h+='</tr>';
+      });
+    });
+    $('#matrix').innerHTML=h+'</tbody>';
+    const w=$('#matrix-wrap'); w.scrollLeft=w.scrollWidth;
+  }
+
+  function renderProfiles(){
+    $('#profile-select').innerHTML=store.profiles.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    $('#profile-select').value=profileId;
+    const current=store.profiles.find(p=>p.id===profileId);
+    $('#btn-profile-clear').textContent=current&&current.name==='나'?'내 데이터 초기화':`${current?current.name:'현재 가족'} 데이터 초기화`;
+  }
+  function renderAll(){ renderProfiles(); renderLabFilter(); renderSummary(); renderDetail(); renderChips(); renderCards(); renderMatrix(); }
+
+  /* 이벤트 */
+  $('#cards').addEventListener('click',e=>{
+    const c=e.target.closest('.card'); if(!c) return;
+    state.sel=c.dataset.id;
+    document.querySelectorAll('.card').forEach(x=>x.setAttribute('aria-pressed',x.dataset.id===state.sel));
+    renderDetail();
+    $('#detail-top').scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+  $('#detail-top').addEventListener('click',e=>{
+    const b=e.target.closest('[data-detail-attachment]');if(!b)return;
+    const t=tests.filter(x=>x.date===b.dataset.detailAttachment&&x.attachment).sort((a,z)=>a.date.localeCompare(z.date)).pop();
+    if(t)openAttachment(t.attachment);
+  });
+  $('#matrix').addEventListener('click',e=>{
+    const edit=e.target.closest('[data-edit-test]'), del=e.target.closest('[data-delete-test]');
+    const id=edit?.dataset.editTest||del?.dataset.deleteTest; if(!id)return;
+    const test=tests.find(t=>t.id===id); if(!test)return;
+    if(edit) openForm(true,test);
+    if(del&&window.confirm(`${test.date} ${test.lab||'기관 미지정'} 검사를 삭제할까요?`)){ tests=tests.filter(t=>t.id!==id); save(); renderAll(); toast('검사 기록을 삭제했습니다'); }
+  });
+  $('#chips').addEventListener('click',e=>{
+    const b=e.target.closest('.chip'); if(!b) return;
+    state.group=b.dataset.g;
+    document.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',x.dataset.g===state.group));
+    renderCards(); renderMatrix();
+  });
+  let raf=0;
+  const redraw=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>drawChart(ITEMS.find(x=>x.id===state.sel)));};
+  if(window.ResizeObserver) new ResizeObserver(redraw).observe($('#chart')); else window.addEventListener('resize',redraw);
+
+  /* 입력 폼 */
+  const PRESETS={base:BASE,thy:[...BASE,'thy'],cbc:[...BASE,'cbc'],thyvit:[...BASE,'thy','vit'],all:ALL};
+  $('#f-groups').innerHTML=GROUPS.map(g=>`<label class="gchk"><input type="checkbox" value="${g.id}"> ${g.name}</label>`).join('');
+  function setPreset(p){
+    $('#f-preset').value=p;
+    if(PRESETS[p]) document.querySelectorAll('#f-groups input').forEach(c=>{c.checked=PRESETS[p].includes(c.value);});
+    buildFormItems();
+  }
+  function buildFormItems(){
+    const checked=[...document.querySelectorAll('#f-groups input:checked')].map(c=>c.value);
+    const old={}; document.querySelectorAll('#f-items input').forEach(i=>{old[i.dataset.id]=i.value;});
+    $('#f-items').innerHTML=GROUPS.filter(g=>checked.includes(g.id)).map(g=>
+      `<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
+      ITEMS.filter(i=>i.g===g.id).map(it=>`<label class="f-item"><span>${it.name} <em>${it.unit}</em></span><input type="number" step="any" inputmode="decimal" data-id="${it.id}" placeholder="${refTextFor(it,$('#f-lab').value)}" value="${old[it.id]!=null?old[it.id]:''}"></label>`).join('')+
+      `</div></div>`).join('')||'<p class="hint" style="margin-bottom:12px">항목 그룹을 하나 이상 선택하세요.</p>';
+  }
+  $('#f-preset').addEventListener('change',e=>{ if(e.target.value==='custom') buildFormItems(); else setPreset(e.target.value); });
+  $('#f-groups').addEventListener('change',()=>{
+    const sel=[...document.querySelectorAll('#f-groups input:checked')].map(c=>c.value).sort().join();
+    const hit=Object.keys(PRESETS).find(k=>PRESETS[k].slice().sort().join()===sel);
+    $('#f-preset').value=hit||'custom';
+    buildFormItems();
+  });
+  let editingTestId=null;
+  function showAttachment(test){
+    const a=test?.attachment;
+    $('#f-attachment-list').innerHTML=a?`현재 첨부: <button type="button" class="linkbtn" data-open-attachment="${esc(a.id||'')}">${esc(a.name)}</button> <button type="button" class="linkbtn" data-remove-attachment="1">삭제</button> (새 파일을 선택하면 교체됩니다)`:'';
+  }
+  function openForm(open,test=null){
+    $('#form-panel').hidden=!open; $('#btn-add').setAttribute('aria-expanded',open);
+    if(open){
+      editingTestId=test?.id||null; $('#f-test-id').value=editingTestId||'';
+      $('#form-panel h2').textContent=test?'검사 결과 수정':'검사 결과 추가';
+      $('#f-date').value=test?.date||todayStr; $('#f-lab').value=test?.lab||''; $('#f-next-appointment').value=test?.nextAppointmentDate||''; $('#f-interval').value=String(test?.intervalMonths||3); $('#f-note').value=test?.note||'';
+      $('#f-attachment').value=''; showAttachment(test);
+      setPreset(test?'custom':'base');
+      if(test){ document.querySelectorAll('#f-groups input').forEach(c=>c.checked=(test.groups||[]).includes(c.value)); buildFormItems(); document.querySelectorAll('#f-items input').forEach(i=>{if(test.v[i.dataset.id]!=null)i.value=test.v[i.dataset.id];}); }
+      $('#form-panel').scrollIntoView({behavior:'smooth',block:'start'});
+    } else { editingTestId=null; $('#form-panel h2').textContent='검사 결과 추가'; }
+  }
+  $('#btn-add').addEventListener('click',()=>openForm($('#form-panel').hidden));
+  $('#f-cancel').addEventListener('click',()=>openForm(false));
+  $('#f-attachment-list').addEventListener('click',e=>{
+    const test=tests.find(t=>t.id===editingTestId), a=test?.attachment;
+    if(e.target.closest('[data-open-attachment]')){e.preventDefault();openAttachment(a);}
+    if(e.target.closest('[data-remove-attachment]')&&test){if(a?.id)deleteAttachment(a.id);delete test.attachment;showAttachment(test);save();}
+  });
+  $('#profile-select').addEventListener('change',e=>{
+    save();
+    profileId=e.target.value;
+    const profile=store.profiles.find(p=>p.id===profileId);
+    tests=profile.tests;
+    labFilter='all';
+    tests.sort((a,b)=>a.date.localeCompare(b.date));
+    state.sel=null;
+    pickDefault();
+    renderAll();
+    openForm(false);
+  });
+  $('#lab-filter').addEventListener('change',e=>{ labFilter=e.target.value; renderSummary(); renderDetail(); renderCards(); renderMatrix(); });
+  $('#period-filter').addEventListener('change',e=>{ periodFilter=e.target.value; renderSummary(); renderDetail(); renderCards(); renderMatrix(); });
+  $('#btn-compare').addEventListener('click',()=>{
+    state.compareOpen=!state.compareOpen;
+    if(state.compareOpen&&!state.compare.length) state.compare=[state.sel];
+    renderCompare();
+    if(state.compareOpen) $('#compare-box').scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+  $('#compare-box').addEventListener('change',e=>{
+    const id=e.target.dataset.compare;if(!id)return;
+    state.compare=e.target.checked?[...new Set([...state.compare,id])]:state.compare.filter(x=>x!==id);
+    renderCompare();
+  });
+  $('#btn-lab-add').addEventListener('click',()=>{
+    const name=window.prompt('검사결과지에 적힌 기관명을 그대로 입력하세요');
+    if(!name||!name.trim()) return;
+    let lab=name.trim();
+    const matches=similarLabs(lab);
+    if(matches.length&&window.confirm(`유사한 과거 기관명이 있습니다:\n${matches.join('\n')}\n\n첫 번째 기관명을 복원할까요?\n취소하면 입력한 이름으로 새 기관을 등록합니다.`)) lab=matches[0];
+    if(!store.labs.includes(lab)) store.labs.push(lab);
+    renderLabFilter(); $('#f-lab').value=lab; $('#range-lab').value=lab; renderRangeEditor(); save();
+  });
+  $('#btn-lab-delete').addEventListener('click',()=>{
+    const lab=$('#range-lab').value;
+    if(!lab){toast('삭제할 검사기관을 선택하세요');return;}
+    if(!window.confirm(`'${lab}' 기관을 등록 목록에서 삭제할까요?\n기존 검사 기록은 보존되지만 이 기관의 참고 범위 설정은 삭제됩니다.`)) return;
+    store.labs=store.labs.filter(x=>x!==lab);
+    delete store.referenceRanges[lab];
+    if(labFilter===lab) labFilter='all';
+    save(); renderLabFilter(); $('#range-lab').value=store.labs[0]||''; renderRangeEditor(); renderAll();
+    toast(`${lab} 기관을 삭제했습니다`);
+  });
+  $('#btn-ranges').addEventListener('click',()=>{
+    renderRangeEditor(); $('#range-panel').hidden=false; $('#range-panel').scrollIntoView({behavior:'smooth',block:'start'});
+  });
+  $('#range-cancel').addEventListener('click',()=>{$('#range-panel').hidden=true;});
+  $('#range-lab').addEventListener('change',renderRangeEditor);
+  $('#range-save').addEventListener('click',()=>{
+    const lab=$('#range-lab').value; if(!lab){toast('검사기관을 먼저 등록하세요');return;}
+    const next={};
+    document.querySelectorAll('#range-items input[data-id]').forEach(input=>{
+      const id=input.dataset.id, part=input.dataset.range;
+      next[id]=next[id]||{};
+      if(input.value!=='') next[id][part]=Number(input.value);
+    });
+    Object.keys(next).forEach(id=>{
+      const r=next[id];
+      if(r.lo==null&&r.hi==null) delete next[id];
+      else if(r.lo==null) r.lo=null;
+      else if(r.hi==null) r.hi=null;
+    });
+    store.referenceRanges[lab]=next; save(); $('#range-panel').hidden=true; renderAll(); toast(`${lab} 참고 범위를 저장했습니다`);
+  });
+  $('#btn-export').addEventListener('click',()=>{
+    save();
+    const payload=JSON.stringify(Object.assign({},store,{exportedAt:new Date().toISOString()}),null,2);
+    const blob=new Blob([payload],{type:'application/json'});
+    const url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=`blood-tracker-backup-${todayStr.replace(/-/g,'')}.json`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('데이터 백업 파일을 저장했습니다');
+  });
+  $('#btn-csv').addEventListener('click',()=>{
+    const shown=tests, rows=[['프로필','검사일','검사기관','검사종류','항목','영문명','수치','단위','상태','메모','첨부파일']];
+    shown.forEach(t=>Object.entries(t.v||{}).forEach(([id,v])=>{const it=ITEMS.find(x=>x.id===id);if(it)rows.push([store.profiles.find(p=>p.id===profileId)?.name||'',t.date,t.lab||'',testLabel(t),it.name,it.en,v,it.unit,ST[markerStatus(it,v,t.lab)],t.note||'',t.attachment?.name||'']);}));
+    const csv='\uFEFF'+rows.map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`blood-tracker-${todayStr.replace(/-/g,'')}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('CSV 파일을 저장했습니다');
+  });
+  $('#btn-import').addEventListener('click',()=>$('#file-import').click());
+  $('#file-import').addEventListener('change',e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const incoming=JSON.parse(reader.result);
+        if(!incoming||!Array.isArray(incoming.profiles)||!incoming.profiles.length) throw new Error('invalid');
+        if(!window.confirm('현재 데이터를 백업 파일의 데이터로 바꿀까요?\n현재 데이터는 먼저 백업해 두세요.')) return;
+        store.schemaVersion=2;
+        store.profiles=incoming.profiles.map(p=>({id:String(p.id||`p-${Date.now()}`),name:String(p.name||'이름 없음'),tests:Array.isArray(p.tests)?p.tests:[]}));
+        store.labs=Array.isArray(incoming.labs)?incoming.labs.map(String):[];
+        store.referenceRanges=incoming.referenceRanges&&typeof incoming.referenceRanges==='object'?incoming.referenceRanges:{};
+        store.labs=[...new Set([...store.labs,...store.profiles.flatMap(p=>p.tests.map(t=>t.lab)).filter(Boolean)])];
+        profileId=store.profiles[0].id; store.selectedProfileId=profileId; tests=store.profiles[0].tests;
+        labFilter='all'; state.sel=null; pickDefault(); save(); renderAll();
+        toast('데이터를 복원했습니다');
+      }catch(err){ toast('복원할 수 없는 JSON 백업 파일입니다'); }
+      e.target.value='';
+    };
+    reader.readAsText(file);
+  });
+  $('#btn-profile-add').addEventListener('click',()=>{
+    const name=window.prompt('추가할 가족의 이름을 입력하세요');
+    if(!name||!name.trim()) return;
+    const p=newProfile(name.trim());
+    store.profiles.push(p);
+    save();
+    profileId=p.id; tests=p.tests; state.sel=ITEMS[0].id;
+    renderAll();
+    toast(`${p.name} 프로필을 추가했습니다`);
+  });
+  $('#btn-profile-rename').addEventListener('click',()=>{
+    const profile=store.profiles.find(p=>p.id===profileId); if(!profile)return;
+    const name=window.prompt('프로필 이름을 입력하세요',profile.name);
+    if(!name||!name.trim()||name.trim()===profile.name)return;
+    profile.name=name.trim(); save(); renderAll(); toast('프로필 이름을 변경했습니다');
+  });
+  $('#btn-profile-delete').addEventListener('click',()=>{
+    if(store.profiles.length<=1){ toast('프로필이 하나뿐이라 삭제할 수 없습니다'); return; }
+    const profile=store.profiles.find(p=>p.id===profileId);
+    if(!profile||!window.confirm(`'${profile.name}'의 검사 데이터와 프로필을 삭제할까요?\n삭제 후에는 복원할 수 없습니다. 먼저 백업을 저장하세요.`)) return;
+    store.profiles=store.profiles.filter(p=>p.id!==profileId);
+    profileId=store.profiles[0].id; store.selectedProfileId=profileId;
+    tests=store.profiles[0].tests||[]; labFilter='all'; state.sel=null; pickDefault(); save(); renderAll();
+    toast(`${profile.name} 프로필을 삭제했습니다`);
+  });
+  $('#btn-profile-clear').addEventListener('click',()=>{
+    const profile=store.profiles.find(p=>p.id===profileId);
+    if(!profile||!window.confirm(`'${profile.name}'의 검사 기록을 모두 초기화할까요?\n프로필과 기관 설정은 유지됩니다.`)) return;
+    tests=[]; profile.tests=[]; labFilter='all'; state.sel=null; pickDefault(); save(); renderAll(); openForm(false);
+    toast(`${profile.name}의 검사 데이터를 초기화했습니다`);
+  });
+  let tt=0;
+  function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600);}
+  $('#add-form').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const date=$('#f-date').value; if(!date){toast('검사일을 입력하세요');return;}
+    if(date>todayStr){toast('검진일은 오늘 이후로 입력할 수 없습니다');return;}
+    const lab=$('#f-lab').value.trim();
+    const intervalMonths=Number($('#f-interval').value)||3;
+    const nextAppointmentDate=$('#f-next-appointment').value||'';
+    const note=$('#f-note').value.trim();
+    if(lab&&!store.labs.includes(lab)) store.labs.push(lab);
+    const v={};
+    let invalid=false;
+    document.querySelectorAll('#f-items input').forEach(i=>{ if(i.value!==''){ const n=Number(i.value); if(!Number.isFinite(n)||n<0||n>100000000){invalid=true;} else v[i.dataset.id]=n; } });
+    if(invalid){toast('수치는 0 이상 100,000,000 이하의 숫자로 입력하세요');return;}
+    if(!Object.keys(v).length){toast('수치를 하나 이상 입력하세요');return;}
+    const groups=[...document.querySelectorAll('#f-groups input:checked')].map(c=>c.value);
+    const editingId=$('#f-test-id').value;
+    const ex=editingId?tests.find(t=>t.id===editingId):tests.find(t=>t.date===date&&(t.lab||'')===lab);
+    const file=$('#f-attachment').files[0];
+    let attachment=ex?.attachment;
+    if(file){
+      if(file.size>5*1024*1024){toast('첨부 파일은 5MB 이하로 선택하세요');return;}
+      try{if(attachment?.id)deleteAttachment(attachment.id);attachment={name:file.name,type:file.type,id:await putAttachment(file)};}
+      catch(err){toast('첨부 파일 저장을 지원하지 않는 환경입니다');return;}
+    }
+    if(ex){ ex.date=date; ex.lab=lab; Object.assign(ex.v,v); ex.groups=groups; ex.intervalMonths=intervalMonths; ex.nextAppointmentDate=nextAppointmentDate; ex.note=note; if(attachment)ex.attachment=attachment; }
+    else tests.push({id:`t-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,date,lab,intervalMonths,nextAppointmentDate,note,groups,v,attachment});
+    tests.sort((a,b)=>a.date.localeCompare(b.date));
+    const action=editingId?'수정했습니다':'저장했습니다';
+    save(); renderAll(); openForm(false); toast(`${dotted(date)} 검사 결과를 ${action}`);
+  });
+  $('#btn-reset').addEventListener('click',()=>{
+    tests=sampleTests(); try{localStorage.removeItem(KEY);}catch(e){}
+    const profile=store.profiles.find(p=>p.id===profileId);
+    if(profile) profile.tests=tests;
+    store.profiles.forEach(p=>{if(p.id!==profileId)p.tests=p.tests||[];});
+    save();
+    renderAll(); toast('샘플 데이터로 되돌렸습니다');
+  });
+
+  let deferredInstallPrompt=null;
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstallPrompt=e;$('#install-app').hidden=false;});
+  $('#install-app').addEventListener('click',async()=>{if(!deferredInstallPrompt)return;deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;$('#install-app').hidden=true;});
+  if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./blood-tracker-sw.js').catch(()=>{});
+  renderAll();
+})();
+</script>

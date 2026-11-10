@@ -1,0 +1,9 @@
+{
+  "name": "혈액검사 기록",
+  "short_name": "혈액검사",
+  "start_url": "./blood-tracker-prototype.html",
+  "display": "standalone",
+  "background_color": "#F2F5F8",
+  "theme_color": "#2D55D6",
+  "lang": "ko"
+}
