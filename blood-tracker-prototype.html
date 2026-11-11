@@ -174,6 +174,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 .f-item em{font-style:normal;color:var(--ink-3);font-size:12px}
 #range-items .f-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:start}
 #range-items .f-item{display:grid;grid-template-rows:52px 38px;align-items:start;align-content:start}
+#range-items .f-item[hidden],#range-items .f-grp[hidden]{display:none!important}
 #range-items .f-item>span:first-child{display:block;height:52px;min-height:52px;line-height:1.45;white-space:normal;overflow:visible}
 #range-items .f-item>span:first-child strong,#range-items .f-item>span:first-child em{display:block}
 #range-items .f-item>span:first-child strong{font-weight:500}
@@ -884,6 +885,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     toast(`${lab} 기관을 삭제했습니다`);
   });
   $('#btn-ranges').addEventListener('click',()=>{
+    if(labFilter!=='all'&&store.labs.includes(labFilter)) $('#range-lab').value=labFilter;
     renderRangeEditor(); $('#range-panel').hidden=false; $('#range-panel').scrollIntoView({behavior:'smooth',block:'start'});
   });
   $('#range-cancel').addEventListener('click',()=>{$('#range-panel').hidden=true;});
