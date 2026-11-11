@@ -116,7 +116,7 @@ button,input,select{font:inherit;color:inherit}
 .c-num span{font-size:12px;color:var(--ink-2)}
 .c-meta{font-size:12px;color:var(--ink-2)}
 .c-date{font:400 11px var(--f-mono);color:var(--ink-3)}
-.td-ref{display:block;margin-top:2px;color:var(--ink-3);font-size:10px;font-weight:400;white-space:nowrap}
+.ref-cell{min-width:150px;text-align:left;color:var(--ink-2);font-size:11px;white-space:normal;line-height:1.35}
 .spark{flex:none}
 .spark polyline{fill:none;stroke:var(--accent);stroke-width:1.75;stroke-linejoin:round;stroke-linecap:round}
 
@@ -697,16 +697,17 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     const available=new Set(visibleItems().map(it=>it.id));
     const gs=GROUPS.filter(g=>state.group==='all'||g.id===state.group);
     const shown=viewTests();
-    let h='<thead><tr><th class="first">항목</th>'+shown.map(t=>`<th><span class="dt">${t.date.slice(2).replace(/-/g,'.')}</span><span class="lb">${testLabel(t)}${t.lab?'<br>'+esc(t.lab):''}</span><span class="th-actions"><button type="button" class="linkbtn" data-edit-test="${t.id}">수정</button><button type="button" class="linkbtn" data-delete-test="${t.id}">삭제</button></span></th>`).join('')+'</tr></thead><tbody>';
+    let h='<thead><tr><th class="first">항목</th><th class="ref-cell">참고 범위</th>'+shown.map(t=>`<th><span class="dt">${t.date.slice(2).replace(/-/g,'.')}</span><span class="lb">${testLabel(t)}${t.lab?'<br>'+esc(t.lab):''}</span><span class="th-actions"><button type="button" class="linkbtn" data-edit-test="${t.id}">수정</button><button type="button" class="linkbtn" data-delete-test="${t.id}">삭제</button></span></th>`).join('')+'</tr></thead><tbody>';
     gs.forEach(g=>{
-      h+=`<tr class="grp-row"><th colspan="${shown.length+1}"><span>${g.name}</span></th></tr>`;
+      h+=`<tr class="grp-row"><th colspan="${shown.length+2}"><span>${g.name}</span></th></tr>`;
       ITEMS.filter(i=>i.g===g.id&&available.has(i.id)).forEach(it=>{
-        h+=`<tr><td class="first">${it.name}<small>${it.unit}</small></td>`;
+        const refs=[...new Set(shown.map(t=>`${t.lab||'미지정'}: ${refTextFor(it,t.lab)}`))];
+        h+=`<tr><td class="first">${it.name}<small>${it.unit}</small></td><td class="ref-cell">${refs.length?esc(refs.join(' · ')):'—'}</td>`;
         shown.forEach(t=>{
           const v=t.v[it.id];
           if(v==null){h+='<td class="na">—</td>';return;}
           const st=markerStatus(it,v,t.lab);
-          h+=`<td class="${st}">${fmt(it,v)}${st==='high'?' ▲':st==='low'?' ▼':''}<small class="td-ref">참고 ${esc(refTextFor(it,t.lab))}</small></td>`;
+          h+=`<td class="${st}">${fmt(it,v)}${st==='high'?' ▲':st==='low'?' ▼':''}</td>`;
         });
         h+='</tr>';
       });
