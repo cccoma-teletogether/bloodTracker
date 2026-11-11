@@ -924,12 +924,12 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
       const target=input.dataset.rangeSex?nextSex[input.dataset.rangeSex]:(next[id]=next[id]||{});
       if(input.value!==''){target[id]=target[id]||{};target[id][part]=Number(input.value);}
     });
-    Object.keys(next).forEach(id=>{
-      const r=next[id];
-      if(r.lo==null&&r.hi==null) delete next[id];
-      else if(r.lo==null) r.lo=null;
-      else if(r.hi==null) r.hi=null;
+    const normalizeRanges=ranges=>Object.keys(ranges).forEach(id=>{
+      const r=ranges[id];
+      if(r.lo==null&&r.hi==null) delete ranges[id];
+      else {if(r.lo==null)r.lo=null;if(r.hi==null)r.hi=null;}
     });
+    normalizeRanges(next);normalizeRanges(nextSex.male);normalizeRanges(nextSex.female);
     const selectedItemIds=[...selectedItems];
     if(!selectedItemIds.length){toast('검사항목을 하나 이상 선택하세요');return;}
     const selectedSexItemIds=[...sexSelected].filter(id=>selectedItems.has(id));
