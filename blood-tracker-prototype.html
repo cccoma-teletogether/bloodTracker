@@ -461,11 +461,12 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   const fmt=(it,v)=>Number(v).toFixed(it.dec||0);
   const ST={ok:'정상',high:'높음 ▲',low:'낮음 ▼'};
   const status=(it,v)=>(it.lo!=null&&v<it.lo)?'low':(it.hi!=null&&v>it.hi)?'high':'ok';
+  const rangeEntry=(map,id)=>{const raw=map&&map[id];return raw&&raw.lo==null&&raw.hi==null&&raw[id]?raw[id]:raw;};
   const rangeFor=(it,lab)=>{
     const profile=store.profiles.find(p=>p.id===profileId), sex=profile?.sex;
     const sexSpecific=lab&&Array.isArray(store.labSexItems[lab])&&store.labSexItems[lab].includes(it.id);
-    const sexCustom=sexSpecific&&lab&&sex&&store.referenceRangesBySex[lab]&&store.referenceRangesBySex[lab][sex]&&store.referenceRangesBySex[lab][sex][it.id];
-    const custom=sexCustom||(lab&&store.referenceRanges[lab]&&store.referenceRanges[lab][it.id]);
+    const sexCustom=sexSpecific&&lab&&sex&&rangeEntry(store.referenceRangesBySex[lab]?.[sex],it.id);
+    const custom=sexCustom||(lab&&rangeEntry(store.referenceRanges[lab],it.id));
     return custom?Object.assign({},it,custom):it;
   };
   const markerStatus=(it,v,lab)=>{const r=rangeFor(it,lab);return status(r,v);};
@@ -647,8 +648,8 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#lab-item-settings').innerHTML=lab?`<fieldset><legend>이 기관에서 제공하는 검사항목</legend><p class="hint">이 목록이 결과 입력 화면과 아래 항목 현황에 표시될 항목을 결정합니다.</p><div class="gchks"><label class="gchk"><input type="checkbox" data-lab-items-toggle ${available.size===ITEMS.length?'checked':''}> 전체 선택</label>${ITEMS.map(it=>`<label class="gchk"><input type="checkbox" data-lab-item="${it.id}" ${available.has(it.id)?'checked':''}> ${it.name}</label>`).join('')}</div></fieldset><fieldset><legend>성별 기준을 따로 적용할 항목</legend><p class="hint">이 목록은 표시 여부가 아니라 참고 범위만 구분합니다. 예: HDL만 선택하면 HDL만 남성·여성 기준을 따로 입력하고, 나머지는 공통 기준을 사용합니다.</p><div class="gchks"><label class="gchk"><input type="checkbox" data-sex-items-toggle ${available.size>0&&sexItems.size===available.size?'checked':''}> 전체 선택</label>${ITEMS.filter(it=>available.has(it.id)).map(it=>`<label class="gchk"><input type="checkbox" data-sex-item="${it.id}" ${sexItems.has(it.id)?'checked':''}> ${it.name}</label>`).join('')}</div></fieldset>`:'';
     $('#range-items').innerHTML=GROUPS.map(g=>`<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
       ITEMS.filter(it=>it.g===g.id).map(it=>{
-        const r=custom[it.id]||{};
-        if(sexItems.has(it.id)){const m=sexRanges.male?.[it.id]||{},f=sexRanges.female?.[it.id]||{};return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
+        const r=rangeEntry(custom,it.id)||{};
+        if(sexItems.has(it.id)){const m=rangeEntry(sexRanges.male,it.id)||{},f=rangeEntry(sexRanges.female,it.id)||{};return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
         return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
       }).join('')+'</div></div>').join('');
     syncRangeItemsVisibility();
@@ -923,8 +924,10 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     document.querySelectorAll('#range-items input[data-id]').forEach(input=>{
       const id=input.dataset.id, part=input.dataset.range;
       if(!selectedItems.has(id)) return;
-      const target=input.dataset.rangeSex?nextSex[input.dataset.rangeSex]:(next[id]=next[id]||{});
-      if(input.value!==''){target[id]=target[id]||{};target[id][part]=Number(input.value);}
+      if(input.value!==''){
+        if(input.dataset.rangeSex){const target=nextSex[input.dataset.rangeSex];target[id]=target[id]||{};target[id][part]=Number(input.value);}
+        else {next[id]=next[id]||{};next[id][part]=Number(input.value);}
+      }
     });
     const normalizeRanges=ranges=>Object.keys(ranges).forEach(id=>{
       const r=ranges[id];
