@@ -116,6 +116,7 @@ button,input,select{font:inherit;color:inherit}
 .c-num span{font-size:12px;color:var(--ink-2)}
 .c-meta{font-size:12px;color:var(--ink-2)}
 .c-date{font:400 11px var(--f-mono);color:var(--ink-3)}
+.td-ref{display:block;margin-top:2px;color:var(--ink-3);font-size:10px;font-weight:400;white-space:nowrap}
 .spark{flex:none}
 .spark polyline{fill:none;stroke:var(--accent);stroke-width:1.75;stroke-linejoin:round;stroke-linecap:round}
 
@@ -172,13 +173,25 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 .f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .f-item em{font-style:normal;color:var(--ink-3);font-size:12px}
 #range-items .f-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:start}
-#range-items .f-item{display:flex;flex-direction:column;align-items:stretch;align-content:initial}
-#range-items .f-item>span:first-child{display:block;min-height:38px}
+#range-items .f-item{display:grid;grid-template-rows:52px 38px;align-items:start;align-content:start}
+#range-items .f-item>span:first-child{display:block;height:52px;min-height:52px;line-height:1.45;white-space:normal;overflow:visible}
+#range-items .f-item>span:first-child strong,#range-items .f-item>span:first-child em{display:block}
+#range-items .f-item>span:first-child strong{font-weight:500}
+#range-items .f-item>span:first-child em{margin-top:2px}
+#range-items input{height:38px}
 #range-items .f-item>span:last-child{display:flex;gap:6px;align-self:stretch}
 #range-items .f-item>span:last-child input{flex:1;min-width:0}
 #range-items .sex-range-row{display:flex;align-items:center;gap:6px;margin-top:4px}
 #range-items .sex-range-row strong{flex:0 0 38px;width:38px;white-space:nowrap;font-size:12px;color:var(--ink-2);font-weight:500}
 #range-items .sex-range-row input{flex:1;min-width:0}
+#f-items input[data-derived="true"]{background:var(--surface-2);cursor:not-allowed}
+#f-items .f-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));align-items:start}
+#f-items .f-item{display:grid;grid-template-rows:52px 38px;align-items:start;align-content:start}
+#f-items .f-item>span:first-child{display:block;height:52px;min-height:52px;line-height:1.45;white-space:normal;overflow:visible}
+#f-items .f-item>span:first-child strong,#f-items .f-item>span:first-child em{display:block}
+#f-items .f-item>span:first-child strong{font-weight:500}
+#f-items .f-item>span:first-child em{margin-top:2px}
+#f-items input{height:38px}
 #lab-item-settings>fieldset>label.gchk{display:flex;width:max-content;margin-bottom:8px}
 .theme-button{position:fixed;top:14px;right:max(14px,env(safe-area-inset-right,0px));z-index:30;width:38px;height:38px;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:50%;font-size:18px;line-height:1;cursor:pointer}
 .theme-button:hover{border-color:var(--ink-3)}
@@ -335,6 +348,9 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     {id:'tg',g:'lip',name:'중성지방',en:'Triglyceride',unit:'mg/dL',lo:null,hi:149,dec:0,ref:'150 미만'},
     {id:'non_hdl',g:'lip',name:'non-HDL 콜레스테롤',en:'non-HDL-C',unit:'mg/dL',lo:null,hi:null,dec:0,ref:'기관 기준'},
     {id:'tc_hdl',g:'lip',name:'TC/HDL 비율',en:'TC/HDL Ratio',unit:'ratio',lo:null,hi:null,dec:2,ref:'기관 기준'},
+    {id:'ldl_calc',g:'lip',name:'LDL 콜레스테롤(계산)',en:'Calculated LDL-C',unit:'mg/dL',lo:null,hi:null,dec:0,ref:'TG 400 이하에서 계산'},
+    {id:'vldl',g:'lip',name:'VLDL 콜레스테롤(추정)',en:'Estimated VLDL-C',unit:'mg/dL',lo:null,hi:null,dec:0,ref:'TG 400 이하에서 계산'},
+    {id:'remnant',g:'lip',name:'잔여 콜레스테롤',en:'Remnant Cholesterol',unit:'mg/dL',lo:null,hi:null,dec:0,ref:'TC − HDL − LDL'},
     {id:'ast',g:'liv',name:'AST (GOT)',en:'AST',unit:'U/L',lo:null,hi:40,dec:0,ref:'40 이하'},
     {id:'alt',g:'liv',name:'ALT (GPT)',en:'ALT',unit:'U/L',lo:null,hi:41,dec:0,ref:'41 이하'},
     {id:'ggt',g:'liv',name:'γ-GTP',en:'GGT',unit:'U/L',lo:null,hi:60,dec:0,ref:'60 이하'},
@@ -631,8 +647,8 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#range-items').innerHTML=GROUPS.map(g=>`<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
       ITEMS.filter(it=>it.g===g.id).map(it=>{
         const r=custom[it.id]||{};
-        if(sexItems.has(it.id)){const m=sexRanges.male?.[it.id]||{},f=sexRanges.female?.[it.id]||{};return `<label class="f-item"><span>${it.name} <em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
-        return `<label class="f-item"><span>${it.name} <em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
+        if(sexItems.has(it.id)){const m=sexRanges.male?.[it.id]||{},f=sexRanges.female?.[it.id]||{};return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
+        return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
       }).join('')+'</div></div>').join('');
     syncRangeItemsVisibility();
   }
@@ -685,7 +701,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
           const v=t.v[it.id];
           if(v==null){h+='<td class="na">—</td>';return;}
           const st=markerStatus(it,v,t.lab);
-          h+=`<td class="${st}">${fmt(it,v)}${st==='high'?' ▲':st==='low'?' ▼':''}</td>`;
+          h+=`<td class="${st}">${fmt(it,v)}${st==='high'?' ▲':st==='low'?' ▼':''}<small class="td-ref">참고 ${esc(refTextFor(it,t.lab))}</small></td>`;
         });
         h+='</tr>';
       });
@@ -747,8 +763,20 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     const old={}; document.querySelectorAll('#f-items input').forEach(i=>{old[i.dataset.id]=i.value;});
     $('#f-items').innerHTML=GROUPS.filter(g=>checked.includes(g.id)&&ITEMS.some(i=>i.g===g.id&&available.has(i.id))).map(g=>
       `<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
-      ITEMS.filter(i=>i.g===g.id&&available.has(i.id)).map(it=>`<label class="f-item"><span>${it.name} <em>${it.unit}</em></span><input type="number" step="any" inputmode="decimal" data-id="${it.id}" placeholder="${refTextFor(it,$('#f-lab').value)}" value="${old[it.id]!=null?old[it.id]:''}"></label>`).join('')+
+      ITEMS.filter(i=>i.g===g.id&&available.has(i.id)).map(it=>{const derived=['tc_hdl','non_hdl','ldl_calc','vldl','remnant'].includes(it.id);const formula={tc_hdl:'TC ÷ HDL',non_hdl:'TC − HDL',ldl_calc:'TC − HDL − TG ÷ 5',vldl:'TG ÷ 5',remnant:'TC − HDL − LDL'}[it.id]||'';return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit}${derived?' · '+formula+' 자동 계산':''}</em></span><input type="number" step="any" inputmode="decimal" data-id="${it.id}" ${derived?'data-derived="true" readonly':''} placeholder="${derived?formula:refTextFor(it,$('#f-lab').value)}" value="${old[it.id]!=null?old[it.id]:''}"></label>`;}).join('')+
       `</div></div>`).join('')||'<p class="hint" style="margin-bottom:12px">항목 그룹을 하나 이상 선택하세요.</p>';
+    updateDerivedFields();
+  }
+  function updateDerivedFields(){
+    const field=id=>$('#f-items input[data-id="'+id+'"]');
+    const ratio=field('tc_hdl'),nonHdl=field('non_hdl'),ldlCalc=field('ldl_calc'),vldl=field('vldl'),remnant=field('remnant');
+    const tc=Number(field('tc')?.value),hdl=Number(field('hdl')?.value),tg=Number(field('tg')?.value),ldl=Number(field('ldl')?.value);
+    const canLip=Number.isFinite(tc)&&Number.isFinite(hdl)&&Number.isFinite(tg)&&tg<=400;
+    if(ratio)ratio.value=Number.isFinite(tc)&&Number.isFinite(hdl)&&hdl>0?(tc/hdl).toFixed(2):'';
+    if(nonHdl)nonHdl.value=Number.isFinite(tc)&&Number.isFinite(hdl)?(tc-hdl).toFixed(0):'';
+    if(ldlCalc)ldlCalc.value=canLip?(tc-hdl-tg/5).toFixed(0):'';
+    if(vldl)vldl.value=canLip?(tg/5).toFixed(0):'';
+    if(remnant){const ldlForRemnant=Number.isFinite(ldl)?ldl:(canLip?tc-hdl-tg/5:NaN);remnant.value=Number.isFinite(tc)&&Number.isFinite(hdl)&&Number.isFinite(ldlForRemnant)?(tc-hdl-ldlForRemnant).toFixed(0):'';}
   }
   $('#f-preset').addEventListener('change',e=>{ if(e.target.value==='custom') buildFormItems(); else setPreset(e.target.value); });
   $('#f-groups').addEventListener('change',()=>{
@@ -757,6 +785,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#f-preset').value=hit||'custom';
     buildFormItems();
   });
+  $('#f-items').addEventListener('input',e=>{if(e.target.matches('input[data-id="tc"],input[data-id="hdl"],input[data-id="tg"],input[data-id="ldl"]'))updateDerivedFields();});
   $('#f-lab').addEventListener('change',()=>{buildFormItems();});
   let editingTestId=null;
   function showAttachment(test){
@@ -771,7 +800,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
       $('#f-date').value=test?.date||todayStr; $('#f-lab').value=test?.lab||(labFilter!=='all'?labFilter:''); $('#f-next-appointment').value=test?.nextAppointmentDate||''; $('#f-interval').value=String(test?.intervalMonths||3); $('#f-note').value=test?.note||'';
       $('#f-attachment').value=''; showAttachment(test);
       setPreset(test?'custom':'base');
-      if(test){ document.querySelectorAll('#f-groups input').forEach(c=>c.checked=(test.groups||[]).includes(c.value)); buildFormItems(); document.querySelectorAll('#f-items input').forEach(i=>{if(test.v[i.dataset.id]!=null)i.value=test.v[i.dataset.id];}); }
+      if(test){ document.querySelectorAll('#f-groups input').forEach(c=>c.checked=(test.groups||[]).includes(c.value)); buildFormItems(); document.querySelectorAll('#f-items input').forEach(i=>{if(test.v[i.dataset.id]!=null)i.value=test.v[i.dataset.id];}); updateDerivedFields(); }
       $('#form-panel').scrollIntoView({behavior:'smooth',block:'start'});
     } else { editingTestId=null; $('#form-panel h2').textContent='검사 결과 추가'; }
   }
@@ -1001,6 +1030,12 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     const v={};
     let invalid=false;
     document.querySelectorAll('#f-items input').forEach(i=>{ if(i.value!==''){ const n=Number(i.value); if(!Number.isFinite(n)||n<0||n>100000000){invalid=true;} else v[i.dataset.id]=n; } });
+    if(v.tc!=null&&v.hdl!=null&&v.hdl>0)v.tc_hdl=Number((v.tc/v.hdl).toFixed(2));else delete v.tc_hdl;
+    if(v.tc!=null&&v.hdl!=null)v.non_hdl=Number((v.tc-v.hdl).toFixed(0));else delete v.non_hdl;
+    if(v.tc!=null&&v.hdl!=null&&v.tg!=null&&v.tg<=400){v.ldl_calc=Number((v.tc-v.hdl-v.tg/5).toFixed(0));v.vldl=Number((v.tg/5).toFixed(0));}
+    else {delete v.ldl_calc;delete v.vldl;}
+    const ldlForRemnant=v.ldl!=null?v.ldl:v.ldl_calc;
+    if(v.tc!=null&&v.hdl!=null&&ldlForRemnant!=null)v.remnant=Number((v.tc-v.hdl-ldlForRemnant).toFixed(0));else delete v.remnant;
     if(invalid){toast('수치는 0 이상 100,000,000 이하의 숫자로 입력하세요');return;}
     if(!Object.keys(v).length){toast('수치를 하나 이상 입력하세요');return;}
     const groups=[...document.querySelectorAll('#f-groups input:checked')].map(c=>c.value);
