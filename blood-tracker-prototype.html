@@ -801,6 +801,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
       $('#f-attachment').value=''; showAttachment(test);
       setPreset(test?'custom':'base');
       if(test){ document.querySelectorAll('#f-groups input').forEach(c=>c.checked=(test.groups||[]).includes(c.value)); buildFormItems(); document.querySelectorAll('#f-items input').forEach(i=>{if(test.v[i.dataset.id]!=null)i.value=test.v[i.dataset.id];}); updateDerivedFields(); }
+      else { document.querySelectorAll('#f-items input').forEach(i=>{i.value='';}); updateDerivedFields(); }
       $('#form-panel').scrollIntoView({behavior:'smooth',block:'start'});
     } else { editingTestId=null; $('#form-panel h2').textContent='검사 결과 추가'; }
   }
