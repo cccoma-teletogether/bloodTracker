@@ -185,6 +185,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 #range-items .sex-range-row{display:flex;align-items:center;gap:6px;margin-top:4px}
 #range-items .sex-range-row strong{flex:0 0 38px;width:38px;white-space:nowrap;font-size:12px;color:var(--ink-2);font-weight:500}
 #range-items .sex-range-row input{flex:1;min-width:0}
+#range-items .derived-range-note{display:flex;align-items:center;height:38px;padding:0 10px;border:1px dashed var(--line);border-radius:6px;color:var(--ink-3);font-size:12px;background:var(--surface-2)}
 #f-items input[data-derived="true"]{background:var(--surface-2);cursor:not-allowed}
 #f-items .f-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));align-items:start}
 #f-items .f-item{display:grid;grid-template-rows:52px 38px;align-items:start;align-content:start}
@@ -649,16 +650,18 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#range-items').innerHTML=GROUPS.map(g=>`<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
       ITEMS.filter(it=>it.g===g.id).map(it=>{
         const r=rangeEntry(custom,it.id)||{};
-        if(sexItems.has(it.id)){const m=rangeEntry(sexRanges.male,it.id)||{},f=rangeEntry(sexRanges.female,it.id)||{};return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
-        return `<label class="f-item"><span><strong>${it.name}</strong><em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
+        const derived=['tc_hdl','non_hdl','ldl_calc','vldl','remnant'].includes(it.id);
+        if(derived)return `<label class="f-item" data-range-item="${it.id}"><span><strong>${it.name}</strong><em>${it.unit} · 자동 계산</em></span><span class="derived-range-note">검사값으로 자동 계산 · 참고 범위 입력 불필요</span></label>`;
+        if(sexItems.has(it.id)){const m=rangeEntry(sexRanges.male,it.id)||{},f=rangeEntry(sexRanges.female,it.id)||{};return `<label class="f-item" data-range-item="${it.id}"><span><strong>${it.name}</strong><em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
+        return `<label class="f-item" data-range-item="${it.id}"><span><strong>${it.name}</strong><em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
       }).join('')+'</div></div>').join('');
     syncRangeItemsVisibility();
   }
   function syncRangeItemsVisibility(){
     const selected=new Set([...document.querySelectorAll('#lab-item-settings input[data-lab-item]:checked')].map(input=>input.dataset.labItem));
     const sexSelected=new Set([...document.querySelectorAll('#lab-item-settings input[data-sex-item]:checked')].map(input=>input.dataset.sexItem));
-    document.querySelectorAll('#range-items input[data-range]').forEach(input=>{input.closest('.f-item').hidden=!selected.has(input.dataset.id);});
-    document.querySelectorAll('#range-items .f-grp').forEach(group=>{group.hidden=![...group.querySelectorAll('input[data-range]')].some(input=>!input.closest('.f-item').hidden);});
+    document.querySelectorAll('#range-items .f-item[data-range-item]').forEach(item=>{item.hidden=!selected.has(item.dataset.rangeItem);});
+    document.querySelectorAll('#range-items .f-grp').forEach(group=>{group.hidden=![...group.querySelectorAll('.f-item[data-range-item]')].some(item=>!item.hidden);});
   }
   function spark(it,s){
     const w=84,h=30,p=3;
