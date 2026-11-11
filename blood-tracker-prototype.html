@@ -164,11 +164,25 @@ fieldset{border:0;padding:0;margin:0 0 14px}
 legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 .gchks{display:flex;flex-wrap:wrap;gap:6px}
 .gchk{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer}
+.gchk.bulk-toggle{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.gchks label:has(input[data-lab-items-toggle]),.gchks label:has(input[data-sex-items-toggle]){background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
 .gchk input{accent-color:var(--accent);margin:0}
 .f-grp{margin-bottom:12px}
 .f-grp h3{font-size:13px;font-weight:600;margin-bottom:6px}
 .f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
 .f-item em{font-style:normal;color:var(--ink-3);font-size:12px}
+#range-items .f-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:start}
+#range-items .f-item{display:flex;flex-direction:column;align-items:stretch;align-content:initial}
+#range-items .f-item>span:first-child{display:block;min-height:38px}
+#range-items .f-item>span:last-child{display:flex;gap:6px;align-self:stretch}
+#range-items .f-item>span:last-child input{flex:1;min-width:0}
+#range-items .sex-range-row{display:flex;align-items:center;gap:6px;margin-top:4px}
+#range-items .sex-range-row strong{flex:0 0 38px;width:38px;white-space:nowrap;font-size:12px;color:var(--ink-2);font-weight:500}
+#range-items .sex-range-row input{flex:1;min-width:0}
+#lab-item-settings>fieldset>label.gchk{display:flex;width:max-content;margin-bottom:8px}
+.theme-button{position:fixed;top:14px;right:max(14px,env(safe-area-inset-right,0px));z-index:30;width:38px;height:38px;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:50%;font-size:18px;line-height:1;cursor:pointer}
+.theme-button:hover{border-color:var(--ink-3)}
+.top-actions{display:flex;align-items:center;gap:8px}
 .f-actions{display:flex;gap:8px;margin-top:6px}
 #form-panel h2{font-size:16px;font-weight:600;margin-bottom:12px}
 
@@ -199,14 +213,17 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
       <div class="profile-tools" aria-label="프로필 선택">
         <label for="profile-select">현재 보는 사람</label>
         <select id="profile-select"></select>
+        <label for="profile-sex">성별</label>
+        <select id="profile-sex" aria-label="현재 프로필 성별"><option value="unknown">미지정</option><option value="male">남성</option><option value="female">여성</option></select>
         <button class="btn" id="btn-profile-add" type="button">+ 가족 추가</button>
         <button class="btn" id="btn-profile-rename" type="button">이름 변경</button>
         <button class="btn" id="btn-profile-delete" type="button">현재 가족 삭제</button>
         <button class="btn" id="btn-profile-clear" type="button">내 데이터 초기화</button>
       </div>
     </div>
-    <button class="btn primary" id="btn-add" type="button" aria-expanded="false" aria-controls="form-panel">+ 검사 결과 추가</button>
+    <div class="top-actions"><button class="btn primary" id="btn-add" type="button" aria-expanded="false" aria-controls="form-panel">+ 검사 결과 추가</button></div>
   </header>
+  <button class="theme-button" id="theme-toggle" type="button" aria-label="다크 테마로 전환" title="테마 전환">☾</button>
 
   <section class="panel" id="form-panel" hidden>
     <h2>검사 결과 추가</h2>
@@ -250,9 +267,10 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   </section>
 
   <section class="panel" id="range-panel" hidden>
-    <div class="sec-head"><h2>검사기관 및 참고 범위 관리</h2><div class="chips"><button class="btn" id="btn-lab-add" type="button">+ 기관 등록</button><button class="btn" id="btn-lab-delete" type="button">기관 삭제</button><button class="btn" id="range-cancel" type="button">닫기</button></div></div>
-    <p class="hint" style="margin:6px 0 12px">검사결과지에 표시된 참고 범위를 입력하세요. 비워 두면 기본 범위를 사용합니다.</p>
+    <div class="sec-head"><h2>검사기관 및 참고 범위 관리</h2><div class="chips"><button class="btn" id="btn-lab-add" type="button">+ 기관 등록</button><button class="btn" id="btn-lab-rename" type="button">기관명 변경</button><button class="btn" id="btn-lab-delete" type="button">기관 삭제</button><button class="btn" id="range-cancel" type="button">닫기</button></div></div>
+    <p class="hint" style="margin:6px 0 12px">검사결과지에 표시된 항목과 참고 범위를 기관별로 설정하세요. 선택하지 않은 항목은 해당 기관의 결과 입력 화면에서 숨겨집니다.</p>
     <label class="f-item" style="max-width:320px">검사기관<select id="range-lab"></select></label>
+    <div id="lab-item-settings" style="margin-top:14px"></div>
     <div id="range-items" style="margin-top:14px"></div>
     <div class="f-actions"><button class="btn primary" id="range-save" type="button">참고 범위 저장</button></div>
   </section>
@@ -315,6 +333,8 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     {id:'ldl',g:'lip',name:'LDL 콜레스테롤',en:'LDL-C',unit:'mg/dL',lo:null,hi:129,dec:0,ref:'130 미만'},
     {id:'hdl',g:'lip',name:'HDL 콜레스테롤',en:'HDL-C',unit:'mg/dL',lo:40,hi:null,dec:0,ref:'40 이상'},
     {id:'tg',g:'lip',name:'중성지방',en:'Triglyceride',unit:'mg/dL',lo:null,hi:149,dec:0,ref:'150 미만'},
+    {id:'non_hdl',g:'lip',name:'non-HDL 콜레스테롤',en:'non-HDL-C',unit:'mg/dL',lo:null,hi:null,dec:0,ref:'기관 기준'},
+    {id:'tc_hdl',g:'lip',name:'TC/HDL 비율',en:'TC/HDL Ratio',unit:'ratio',lo:null,hi:null,dec:2,ref:'기관 기준'},
     {id:'ast',g:'liv',name:'AST (GOT)',en:'AST',unit:'U/L',lo:null,hi:40,dec:0,ref:'40 이하'},
     {id:'alt',g:'liv',name:'ALT (GPT)',en:'ALT',unit:'U/L',lo:null,hi:41,dec:0,ref:'41 이하'},
     {id:'ggt',g:'liv',name:'γ-GTP',en:'GGT',unit:'U/L',lo:null,hi:60,dec:0,ref:'60 이하'},
@@ -370,6 +390,10 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   store.schemaVersion=2;
   store.labs=[...new Set([...(store.labs||[]),...store.profiles.flatMap(p=>(p.tests||[]).map(t=>t.lab)).filter(Boolean)])];
   store.referenceRanges=store.referenceRanges||{};
+  store.referenceRangesBySex=store.referenceRangesBySex||{};
+  store.labItems=store.labItems||{};
+  store.labSexItems=store.labSexItems||{};
+  store.profiles.forEach(p=>{if(!['male','female'].includes(p.sex))p.sex='unknown';});
   store.selectedProfileId=store.selectedProfileId||store.selectedId||store.profiles[0].id;
   delete store.selectedId;
   let profileId=store.selectedProfileId;
@@ -384,6 +408,17 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   tests.sort((a,b)=>a.date.localeCompare(b.date));
 
   const $=s=>document.querySelector(s);
+  const THEME_KEY='blood-tracker-theme';
+  function applyTheme(theme){
+    document.documentElement.dataset.theme=theme;
+    const dark=theme==='dark';
+    $('#theme-toggle').textContent=dark?'☀':'☾';
+    $('#theme-toggle').setAttribute('aria-label',dark?'라이트 테마로 전환':'다크 테마로 전환');
+    $('#theme-toggle').title=dark?'라이트 테마로 전환':'다크 테마로 전환';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#0F151C':'#2D55D6');
+  }
+  let savedTheme='';try{savedTheme=localStorage.getItem(THEME_KEY)||'';}catch(e){}
+  applyTheme(savedTheme|| (window.matchMedia?.('(prefers-color-scheme: dark)').matches?'dark':'light'));
   const pad=n=>String(n).padStart(2,'0');
   const now=new Date();
   const todayStr=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
@@ -410,11 +445,14 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   const ST={ok:'정상',high:'높음 ▲',low:'낮음 ▼'};
   const status=(it,v)=>(it.lo!=null&&v<it.lo)?'low':(it.hi!=null&&v>it.hi)?'high':'ok';
   const rangeFor=(it,lab)=>{
-    const custom=lab&&store.referenceRanges[lab]&&store.referenceRanges[lab][it.id];
+    const profile=store.profiles.find(p=>p.id===profileId), sex=profile?.sex;
+    const sexSpecific=lab&&Array.isArray(store.labSexItems[lab])&&store.labSexItems[lab].includes(it.id);
+    const sexCustom=sexSpecific&&lab&&sex&&store.referenceRangesBySex[lab]&&store.referenceRangesBySex[lab][sex]&&store.referenceRangesBySex[lab][sex][it.id];
+    const custom=sexCustom||(lab&&store.referenceRanges[lab]&&store.referenceRanges[lab][it.id]);
     return custom?Object.assign({},it,custom):it;
   };
   const markerStatus=(it,v,lab)=>{const r=rangeFor(it,lab);return status(r,v);};
-  const refTextFor=(it,lab)=>{const r=rangeFor(it,lab);return r.ref||(r.lo==null?`${fmt(r,r.hi)} 이하`:r.hi==null?`${fmt(r,r.lo)} 이상`:`${fmt(r,r.lo)}–${fmt(r,r.hi)}`);};
+  const refTextFor=(it,lab)=>{const r=rangeFor(it,lab);return r.ref||(r.lo==null&&r.hi==null?'기관 기준':r.lo==null?`${fmt(r,r.hi)} 이하`:r.hi==null?`${fmt(r,r.lo)} 이상`:`${fmt(r,r.lo)}–${fmt(r,r.hi)}`);};
   let labFilter='all';
   let periodFilter='all';
   const viewTests=()=>{
@@ -422,7 +460,10 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     if(periodFilter!=='all'&&out.length){ const cutoff=addMonths(out[out.length-1].date,-Number(periodFilter)); out=out.filter(t=>t.date>=cutoff); }
     return out;
   };
-  const refText=it=>it.ref||(it.lo==null?`${fmt(it,it.hi)} 이하`:it.hi==null?`${fmt(it,it.lo)} 이상`:`${fmt(it,it.lo)}–${fmt(it,it.hi)}`);
+  const visibleItems=()=>labFilter==='all'?ITEMS:ITEMS.filter(it=>availableItemIds(labFilter).includes(it.id));
+  const refText=it=>it.ref||(it.lo==null&&it.hi==null?'기관 기준':it.lo==null?`${fmt(it,it.hi)} 이하`:it.hi==null?`${fmt(it,it.lo)} 이상`:`${fmt(it,it.lo)}–${fmt(it,it.hi)}`);
+  const allItemIds=()=>ITEMS.map(it=>it.id);
+  const availableItemIds=lab=>lab&&Array.isArray(store.labItems[lab])?store.labItems[lab]:allItemIds();
   const gname=id=>GROUPS.find(g=>g.id===id).name;
   const series=it=>viewTests().filter(t=>t.v[it.id]!=null).map(t=>({date:t.date,v:t.v[it.id],lab:t.lab,note:t.note}));
   function info(it){
@@ -448,8 +489,9 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 
   const state={group:'all',sel:null,compare:[],compareOpen:false};
   function pickDefault(){
-    const flagged=ITEMS.find(it=>{const i=info(it);return i&&i.st!=='ok';});
-    state.sel=(flagged||ITEMS[0]).id;
+    const items=visibleItems();
+    const flagged=items.find(it=>{const i=info(it);return i&&i.st!=='ok';});
+    state.sel=(flagged||items[0]||ITEMS[0]).id;
   }
   pickDefault();
 
@@ -564,12 +606,13 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 
   /* 필터 / 카드 */
   function renderChips(){
-    const cnt=id=>id==='all'?ITEMS.length:ITEMS.filter(i=>i.g===id).length;
+    const items=visibleItems();
+    const cnt=id=>id==='all'?items.length:items.filter(i=>i.g===id).length;
     $('#chips').innerHTML=[{id:'all',name:'전체'},...GROUPS].map(g=>
       `<button type="button" class="chip" data-g="${g.id}" aria-pressed="${state.group===g.id}">${g.name}<small>${cnt(g.id)}</small></button>`).join('');
   }
   function renderLabFilter(){
-    const labs=[...new Set(tests.map(t=>t.lab||'미지정'))];
+    const labs=[...new Set([...store.labs,...tests.map(t=>t.lab||'미지정')])];
     $('#lab-filter').innerHTML='<option value="all">전체 기관</option>'+labs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
     $('#lab-filter').value=labFilter;
     const selected=$('#f-lab').value;
@@ -581,11 +624,23 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#range-lab').innerHTML=store.labs.map(l=>`<option value="${esc(l)}">${esc(l)}</option>`).join('');
     $('#range-lab').value=lab;
     const custom=store.referenceRanges[lab]||{};
+    const sexRanges=store.referenceRangesBySex[lab]||{};
+    const available=new Set(availableItemIds(lab));
+    const sexItems=new Set(Array.isArray(store.labSexItems[lab])?store.labSexItems[lab]:[]);
+    $('#lab-item-settings').innerHTML=lab?`<fieldset><legend>이 기관에서 제공하는 검사항목</legend><p class="hint">이 목록이 결과 입력 화면과 아래 항목 현황에 표시될 항목을 결정합니다.</p><div class="gchks"><label class="gchk"><input type="checkbox" data-lab-items-toggle ${available.size===ITEMS.length?'checked':''}> 전체 선택</label>${ITEMS.map(it=>`<label class="gchk"><input type="checkbox" data-lab-item="${it.id}" ${available.has(it.id)?'checked':''}> ${it.name}</label>`).join('')}</div></fieldset><fieldset><legend>성별 기준을 따로 적용할 항목</legend><p class="hint">이 목록은 표시 여부가 아니라 참고 범위만 구분합니다. 예: HDL만 선택하면 HDL만 남성·여성 기준을 따로 입력하고, 나머지는 공통 기준을 사용합니다.</p><div class="gchks"><label class="gchk"><input type="checkbox" data-sex-items-toggle ${available.size>0&&sexItems.size===available.size?'checked':''}> 전체 선택</label>${ITEMS.filter(it=>available.has(it.id)).map(it=>`<label class="gchk"><input type="checkbox" data-sex-item="${it.id}" ${sexItems.has(it.id)?'checked':''}> ${it.name}</label>`).join('')}</div></fieldset>`:'';
     $('#range-items').innerHTML=GROUPS.map(g=>`<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
       ITEMS.filter(it=>it.g===g.id).map(it=>{
         const r=custom[it.id]||{};
+        if(sexItems.has(it.id)){const m=sexRanges.male?.[it.id]||{},f=sexRanges.female?.[it.id]||{};return `<label class="f-item"><span>${it.name} <em>${it.unit} · 남녀 기준</em></span><span class="sex-range-row"><strong>남성</strong><input type="number" step="any" data-range="lo" data-range-sex="male" data-id="${it.id}" placeholder="하한" value="${m.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="male" data-id="${it.id}" placeholder="상한" value="${m.hi??''}"></span><span class="sex-range-row"><strong>여성</strong><input type="number" step="any" data-range="lo" data-range-sex="female" data-id="${it.id}" placeholder="하한" value="${f.lo??''}"><input type="number" step="any" data-range="hi" data-range-sex="female" data-id="${it.id}" placeholder="상한" value="${f.hi??''}"></span></label>`;}
         return `<label class="f-item"><span>${it.name} <em>${it.unit} · 기본 ${refText(it)}</em></span><span style="display:flex;gap:6px"><input type="number" step="any" data-range="lo" data-id="${it.id}" placeholder="하한" value="${r.lo??''}"><input type="number" step="any" data-range="hi" data-id="${it.id}" placeholder="상한" value="${r.hi??''}"></span></label>`;
       }).join('')+'</div></div>').join('');
+    syncRangeItemsVisibility();
+  }
+  function syncRangeItemsVisibility(){
+    const selected=new Set([...document.querySelectorAll('#lab-item-settings input[data-lab-item]:checked')].map(input=>input.dataset.labItem));
+    const sexSelected=new Set([...document.querySelectorAll('#lab-item-settings input[data-sex-item]:checked')].map(input=>input.dataset.sexItem));
+    document.querySelectorAll('#range-items input[data-range]').forEach(input=>{input.closest('.f-item').hidden=!selected.has(input.dataset.id);});
+    document.querySelectorAll('#range-items .f-grp').forEach(group=>{group.hidden=![...group.querySelectorAll('input[data-range]')].some(input=>!input.closest('.f-item').hidden);});
   }
   function spark(it,s){
     const w=84,h=30,p=3;
@@ -597,9 +652,11 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${s.map((q,i)=>X(i).toFixed(1)+','+Y(q.v).toFixed(1)).join(' ')}"/><circle class="pt-${st}" cx="${X(s.length-1)}" cy="${Y(last.v)}" r="3.5"/></svg>`;
   }
   function renderCards(){
+    const available=new Set(visibleItems().map(it=>it.id));
     const gs=GROUPS.filter(g=>state.group==='all'||g.id===state.group);
     $('#cards').innerHTML=gs.map(g=>{
-      const list=ITEMS.filter(i=>i.g===g.id);
+      const list=ITEMS.filter(i=>i.g===g.id&&available.has(i.id));
+      if(!list.length)return '';
       return `<div class="grp"><h3>${g.name}<small>${list.length}개 항목</small></h3><div class="grid">`+
         list.map(it=>{
           const inf=info(it);
@@ -616,12 +673,13 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
 
   /* 비교표 */
   function renderMatrix(){
+    const available=new Set(visibleItems().map(it=>it.id));
     const gs=GROUPS.filter(g=>state.group==='all'||g.id===state.group);
     const shown=viewTests();
     let h='<thead><tr><th class="first">항목</th>'+shown.map(t=>`<th><span class="dt">${t.date.slice(2).replace(/-/g,'.')}</span><span class="lb">${testLabel(t)}${t.lab?'<br>'+esc(t.lab):''}</span><span class="th-actions"><button type="button" class="linkbtn" data-edit-test="${t.id}">수정</button><button type="button" class="linkbtn" data-delete-test="${t.id}">삭제</button></span></th>`).join('')+'</tr></thead><tbody>';
     gs.forEach(g=>{
       h+=`<tr class="grp-row"><th colspan="${shown.length+1}"><span>${g.name}</span></th></tr>`;
-      ITEMS.filter(i=>i.g===g.id).forEach(it=>{
+      ITEMS.filter(i=>i.g===g.id&&available.has(i.id)).forEach(it=>{
         h+=`<tr><td class="first">${it.name}<small>${it.unit}</small></td>`;
         shown.forEach(t=>{
           const v=t.v[it.id];
@@ -640,6 +698,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#profile-select').innerHTML=store.profiles.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
     $('#profile-select').value=profileId;
     const current=store.profiles.find(p=>p.id===profileId);
+    $('#profile-sex').value=current?.sex||'unknown';
     $('#btn-profile-clear').textContent=current&&current.name==='나'?'내 데이터 초기화':`${current?current.name:'현재 가족'} 데이터 초기화`;
   }
   function renderAll(){ renderProfiles(); renderLabFilter(); renderSummary(); renderDetail(); renderChips(); renderCards(); renderMatrix(); }
@@ -684,10 +743,11 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   }
   function buildFormItems(){
     const checked=[...document.querySelectorAll('#f-groups input:checked')].map(c=>c.value);
+    const available=new Set(availableItemIds($('#f-lab').value));
     const old={}; document.querySelectorAll('#f-items input').forEach(i=>{old[i.dataset.id]=i.value;});
-    $('#f-items').innerHTML=GROUPS.filter(g=>checked.includes(g.id)).map(g=>
+    $('#f-items').innerHTML=GROUPS.filter(g=>checked.includes(g.id)&&ITEMS.some(i=>i.g===g.id&&available.has(i.id))).map(g=>
       `<div class="f-grp"><h3>${g.name}</h3><div class="f-grid">`+
-      ITEMS.filter(i=>i.g===g.id).map(it=>`<label class="f-item"><span>${it.name} <em>${it.unit}</em></span><input type="number" step="any" inputmode="decimal" data-id="${it.id}" placeholder="${refTextFor(it,$('#f-lab').value)}" value="${old[it.id]!=null?old[it.id]:''}"></label>`).join('')+
+      ITEMS.filter(i=>i.g===g.id&&available.has(i.id)).map(it=>`<label class="f-item"><span>${it.name} <em>${it.unit}</em></span><input type="number" step="any" inputmode="decimal" data-id="${it.id}" placeholder="${refTextFor(it,$('#f-lab').value)}" value="${old[it.id]!=null?old[it.id]:''}"></label>`).join('')+
       `</div></div>`).join('')||'<p class="hint" style="margin-bottom:12px">항목 그룹을 하나 이상 선택하세요.</p>';
   }
   $('#f-preset').addEventListener('change',e=>{ if(e.target.value==='custom') buildFormItems(); else setPreset(e.target.value); });
@@ -697,6 +757,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     $('#f-preset').value=hit||'custom';
     buildFormItems();
   });
+  $('#f-lab').addEventListener('change',()=>{buildFormItems();});
   let editingTestId=null;
   function showAttachment(test){
     const a=test?.attachment;
@@ -707,7 +768,7 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     if(open){
       editingTestId=test?.id||null; $('#f-test-id').value=editingTestId||'';
       $('#form-panel h2').textContent=test?'검사 결과 수정':'검사 결과 추가';
-      $('#f-date').value=test?.date||todayStr; $('#f-lab').value=test?.lab||''; $('#f-next-appointment').value=test?.nextAppointmentDate||''; $('#f-interval').value=String(test?.intervalMonths||3); $('#f-note').value=test?.note||'';
+      $('#f-date').value=test?.date||todayStr; $('#f-lab').value=test?.lab||(labFilter!=='all'?labFilter:''); $('#f-next-appointment').value=test?.nextAppointmentDate||''; $('#f-interval').value=String(test?.intervalMonths||3); $('#f-note').value=test?.note||'';
       $('#f-attachment').value=''; showAttachment(test);
       setPreset(test?'custom':'base');
       if(test){ document.querySelectorAll('#f-groups input').forEach(c=>c.checked=(test.groups||[]).includes(c.value)); buildFormItems(); document.querySelectorAll('#f-items input').forEach(i=>{if(test.v[i.dataset.id]!=null)i.value=test.v[i.dataset.id];}); }
@@ -715,6 +776,10 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     } else { editingTestId=null; $('#form-panel h2').textContent='검사 결과 추가'; }
   }
   $('#btn-add').addEventListener('click',()=>openForm($('#form-panel').hidden));
+  $('#theme-toggle').addEventListener('click',()=>{
+    const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+    applyTheme(next);try{localStorage.setItem(THEME_KEY,next);}catch(e){}
+  });
   $('#f-cancel').addEventListener('click',()=>openForm(false));
   $('#f-attachment-list').addEventListener('click',e=>{
     const test=tests.find(t=>t.id===editingTestId), a=test?.attachment;
@@ -733,7 +798,11 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     renderAll();
     openForm(false);
   });
-  $('#lab-filter').addEventListener('change',e=>{ labFilter=e.target.value; renderSummary(); renderDetail(); renderCards(); renderMatrix(); });
+  $('#profile-sex').addEventListener('change',e=>{
+    const profile=store.profiles.find(p=>p.id===profileId);if(!profile)return;
+    profile.sex=e.target.value;save();renderAll();
+  });
+  $('#lab-filter').addEventListener('change',e=>{ labFilter=e.target.value; state.sel=null; pickDefault(); renderSummary(); renderDetail(); renderChips(); renderCards(); renderMatrix(); });
   $('#period-filter').addEventListener('change',e=>{ periodFilter=e.target.value; renderSummary(); renderDetail(); renderCards(); renderMatrix(); });
   $('#btn-compare').addEventListener('click',()=>{
     state.compareOpen=!state.compareOpen;
@@ -753,7 +822,24 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     const matches=similarLabs(lab);
     if(matches.length&&window.confirm(`유사한 과거 기관명이 있습니다:\n${matches.join('\n')}\n\n첫 번째 기관명을 복원할까요?\n취소하면 입력한 이름으로 새 기관을 등록합니다.`)) lab=matches[0];
     if(!store.labs.includes(lab)) store.labs.push(lab);
+    if(!Array.isArray(store.labItems[lab])) store.labItems[lab]=allItemIds();
     renderLabFilter(); $('#f-lab').value=lab; $('#range-lab').value=lab; renderRangeEditor(); save();
+  });
+  $('#btn-lab-rename').addEventListener('click',()=>{
+    const old=$('#range-lab').value;
+    if(!old){toast('변경할 검사기관을 선택하세요');return;}
+    const next=window.prompt('변경할 검사기관명을 입력하세요',old)?.trim();
+    if(!next||next===old)return;
+    if(store.labs.includes(next)){toast('이미 등록된 기관명입니다');return;}
+    store.labs=store.labs.map(l=>l===old?next:l);
+    store.profiles.forEach(p=>(p.tests||[]).forEach(t=>{if(t.lab===old)t.lab=next;}));
+    if(store.referenceRanges[old]){store.referenceRanges[next]=store.referenceRanges[old];delete store.referenceRanges[old];}
+    if(store.referenceRangesBySex[old]){store.referenceRangesBySex[next]=store.referenceRangesBySex[old];delete store.referenceRangesBySex[old];}
+    if(store.labItems[old]){store.labItems[next]=store.labItems[old];delete store.labItems[old];}
+    if(store.labSexItems[old]){store.labSexItems[next]=store.labSexItems[old];delete store.labSexItems[old];}
+    if(labFilter===old)labFilter=next;
+    save();renderLabFilter();$('#range-lab').value=next;renderRangeEditor();renderAll();
+    toast(`기관명을 '${next}'으로 변경했습니다`);
   });
   $('#btn-lab-delete').addEventListener('click',()=>{
     const lab=$('#range-lab').value;
@@ -761,6 +847,8 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
     if(!window.confirm(`'${lab}' 기관을 등록 목록에서 삭제할까요?\n기존 검사 기록은 보존되지만 이 기관의 참고 범위 설정은 삭제됩니다.`)) return;
     store.labs=store.labs.filter(x=>x!==lab);
     delete store.referenceRanges[lab];
+    delete store.labItems[lab];
+    delete store.labSexItems[lab];
     if(labFilter===lab) labFilter='all';
     save(); renderLabFilter(); $('#range-lab').value=store.labs[0]||''; renderRangeEditor(); renderAll();
     toast(`${lab} 기관을 삭제했습니다`);
@@ -770,13 +858,41 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
   });
   $('#range-cancel').addEventListener('click',()=>{$('#range-panel').hidden=true;});
   $('#range-lab').addEventListener('change',renderRangeEditor);
+  $('#lab-item-settings').addEventListener('change',e=>{
+    if(e.target.matches('input[data-lab-items-toggle]')){
+      const lab=$('#range-lab').value,checked=e.target.checked;
+      document.querySelectorAll('#lab-item-settings input[data-lab-item]').forEach(input=>input.checked=checked);
+      store.labItems[lab]=checked?allItemIds():[];
+      if(!checked)store.labSexItems[lab]=[];
+      renderRangeEditor();
+    }else if(e.target.matches('input[data-sex-items-toggle]')){
+      const lab=$('#range-lab').value,checked=e.target.checked;
+      document.querySelectorAll('#lab-item-settings input[data-sex-item]').forEach(input=>input.checked=checked);
+      store.labSexItems[lab]=checked?availableItemIds(lab):[];
+      renderRangeEditor();
+    }else if(e.target.matches('input[data-sex-item]')){
+      const lab=$('#range-lab').value;
+      store.labSexItems[lab]=[...document.querySelectorAll('#lab-item-settings input[data-sex-item]:checked')].map(input=>input.dataset.sexItem);
+      renderRangeEditor();
+    }else if(e.target.matches('input[data-lab-item]')){
+      const lab=$('#range-lab').value;
+      const selected=[...document.querySelectorAll('#lab-item-settings input[data-lab-item]:checked')].map(input=>input.dataset.labItem);
+      store.labItems[lab]=selected;
+      store.labSexItems[lab]=(store.labSexItems[lab]||[]).filter(id=>selected.includes(id));
+      renderRangeEditor();
+    }else syncRangeItemsVisibility();
+  });
   $('#range-save').addEventListener('click',()=>{
     const lab=$('#range-lab').value; if(!lab){toast('검사기관을 먼저 등록하세요');return;}
     const next={};
+    const nextSex={male:{},female:{}};
+    const selectedItems=new Set([...document.querySelectorAll('#lab-item-settings input[data-lab-item]:checked')].map(input=>input.dataset.labItem));
+    const sexSelected=new Set([...document.querySelectorAll('#lab-item-settings input[data-sex-item]:checked')].map(input=>input.dataset.sexItem));
     document.querySelectorAll('#range-items input[data-id]').forEach(input=>{
       const id=input.dataset.id, part=input.dataset.range;
-      next[id]=next[id]||{};
-      if(input.value!=='') next[id][part]=Number(input.value);
+      if(!selectedItems.has(id)) return;
+      const target=input.dataset.rangeSex?nextSex[input.dataset.rangeSex]:(next[id]=next[id]||{});
+      if(input.value!==''){target[id]=target[id]||{};target[id][part]=Number(input.value);}
     });
     Object.keys(next).forEach(id=>{
       const r=next[id];
@@ -784,7 +900,21 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
       else if(r.lo==null) r.lo=null;
       else if(r.hi==null) r.hi=null;
     });
-    store.referenceRanges[lab]=next; save(); $('#range-panel').hidden=true; renderAll(); toast(`${lab} 참고 범위를 저장했습니다`);
+    const selectedItemIds=[...selectedItems];
+    if(!selectedItemIds.length){toast('검사항목을 하나 이상 선택하세요');return;}
+    const selectedSexItemIds=[...sexSelected].filter(id=>selectedItems.has(id));
+    store.referenceRanges[lab]=next;
+    store.referenceRangesBySex[lab]={male:nextSex.male,female:nextSex.female};
+    store.labItems[lab]=selectedItemIds;
+    if(selectedSexItemIds.length) store.labSexItems[lab]=selectedSexItemIds; else delete store.labSexItems[lab];
+    save();
+    labFilter=lab;
+    state.sel=null;
+    pickDefault();
+    $('#range-panel').hidden=true;
+    renderLabFilter();
+    renderAll();
+    toast(`${lab} 참고 범위와 검사항목을 저장했습니다`);
   });
   $('#btn-export').addEventListener('click',()=>{
     save();
@@ -814,6 +944,9 @@ legend{font-size:13px;color:var(--ink-2);margin-bottom:6px;padding:0}
         store.profiles=incoming.profiles.map(p=>({id:String(p.id||`p-${Date.now()}`),name:String(p.name||'이름 없음'),tests:Array.isArray(p.tests)?p.tests:[]}));
         store.labs=Array.isArray(incoming.labs)?incoming.labs.map(String):[];
         store.referenceRanges=incoming.referenceRanges&&typeof incoming.referenceRanges==='object'?incoming.referenceRanges:{};
+        store.referenceRangesBySex=incoming.referenceRangesBySex&&typeof incoming.referenceRangesBySex==='object'?incoming.referenceRangesBySex:{};
+        store.labItems=incoming.labItems&&typeof incoming.labItems==='object'?incoming.labItems:{};
+        store.labSexItems=incoming.labSexItems&&typeof incoming.labSexItems==='object'?incoming.labSexItems:{};
         store.labs=[...new Set([...store.labs,...store.profiles.flatMap(p=>p.tests.map(t=>t.lab)).filter(Boolean)])];
         profileId=store.profiles[0].id; store.selectedProfileId=profileId; tests=store.profiles[0].tests;
         labFilter='all'; state.sel=null; pickDefault(); save(); renderAll();
